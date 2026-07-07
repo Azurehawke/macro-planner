@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
 
 const emptyForm = { name: '', base_quantity_g: 100, carbs_g: '', fat_g: '', protein_g: '' };
@@ -21,6 +21,20 @@ export default function Foods() {
   const [searchWarnings, setSearchWarnings] = useState([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchBoxRef = useRef(null);
+
+  // Close the results dropdown on an outside click, so it overlays the rest
+  // of the page (foods list, add-food form) instead of shifting it around.
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const load = async () => {
     const { foods } = await api.get('/foods');
@@ -77,6 +91,7 @@ export default function Foods() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     setSearchError('');
+    setShowDropdown(true);
     try {
       const { results, warnings } = await api.get(`/food-search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchResults(results);
@@ -98,6 +113,7 @@ export default function Foods() {
       fat_g: result.fat_g,
       protein_g: result.protein_g,
     });
+    setShowDropdown(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -117,13 +133,14 @@ export default function Foods() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Foods</h1>
 
-      <div className="bg-white shadow rounded p-4 space-y-3">
+      <div ref={searchBoxRef} className="relative bg-white shadow rounded p-4 space-y-3">
         <h2 className="font-medium">Search online</h2>
         <form onSubmit={onSearch} className="flex gap-2">
           <input
             placeholder="e.g. hamburger bun"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => (searchResults || searchError) && setShowDropdown(true)}
             className="flex-1 border rounded px-2 py-1"
           />
           <button
@@ -134,43 +151,63 @@ export default function Foods() {
             {searching ? 'Searching...' : 'Search'}
           </button>
         </form>
-        {searchError && <p className="text-red-600 text-sm">{searchError}</p>}
-        {searchWarnings.map((w) => (
-          <p key={w} className="text-amber-600 text-xs">
-            {w}
-          </p>
-        ))}
-        {searchResults && (
-          <div className="divide-y border rounded">
-            {searchResults.length === 0 && (
+
+        {showDropdown && (searchResults || searchError) && (
+          <div className="absolute left-4 right-4 top-full mt-1 z-20 bg-white border rounded shadow-lg max-h-96 overflow-y-auto">
+            <div className="flex items-center justify-between px-3 py-2 border-b bg-slate-50">
+              <span className="text-xs font-medium text-slate-500">Results</span>
+              <button
+                type="button"
+                onClick={() => setShowDropdown(false)}
+                aria-label="Close results"
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {searchError && <p className="text-red-600 text-sm p-3">{searchError}</p>}
+            {searchWarnings.map((w) => (
+              <p key={w} className="text-amber-600 text-xs px-3 pt-2">
+                {w}
+              </p>
+            ))}
+            {searchResults && searchResults.length === 0 && (
               <p className="p-3 text-sm text-slate-500">No matches found — try a different search term.</p>
             )}
-            {searchResults.map((result) => (
-              <div key={`${result.source}:${result.externalId}`} className="p-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">
-                    {result.name}
-                    {result.brand && <span className="text-slate-400 font-normal"> — {result.brand}</span>}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {SOURCE_LABELS[result.source] || result.source} · per 100g: {result.carbs_g}g carbs ·{' '}
-                    {result.fat_g}g fat · {result.protein_g}g protein · {Math.round(result.calories)} kcal
-                  </p>
-                </div>
-                <button
-                  onClick={() => useSearchResult(result)}
-                  className="shrink-0 border border-emerald-700 text-emerald-700 rounded px-3 py-1 text-sm hover:bg-emerald-50"
-                >
-                  Use this
-                </button>
+            {searchResults && searchResults.length > 0 && (
+              <div className="divide-y">
+                {searchResults.map((result) => (
+                  <div
+                    key={`${result.source}:${result.externalId}`}
+                    className="p-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {result.name}
+                        {result.brand && <span className="text-slate-400 font-normal"> — {result.brand}</span>}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {SOURCE_LABELS[result.source] || result.source} · per 100g: {result.carbs_g}g carbs ·{' '}
+                        {result.fat_g}g fat · {result.protein_g}g protein · {Math.round(result.calories)} kcal
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => useSearchResult(result)}
+                      className="shrink-0 border border-emerald-700 text-emerald-700 rounded px-3 py-1 text-sm hover:bg-emerald-50"
+                    >
+                      Use this
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            <p className="text-xs text-slate-400 p-3 border-t">
+              Picking a result fills in the form below — review it (and adjust if it's not quite your
+              product) before adding it.
+            </p>
           </div>
         )}
-        <p className="text-xs text-slate-400">
-          Picking a result fills in the form below — review it (and adjust if it's not quite your product)
-          before adding it.
-        </p>
       </div>
 
       <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 grid grid-cols-2 sm:grid-cols-6 gap-3 items-end">
