@@ -64,6 +64,33 @@ function MacroGoalCard({ label, planned, goal }) {
   );
 }
 
+// Compact version of MacroGoalCard for mobile, where three full cards
+// stacked vertically eat too much of the (sticky) header's height. All
+// three render side by side in one short row instead.
+function MacroMiniStat({ label, planned, goal }) {
+  const remaining = goal != null ? goal - planned : null;
+  const over = remaining != null && remaining < 0;
+  const pct = goal ? Math.min(100, Math.round((planned / goal) * 100)) : 0;
+  return (
+    <div className="text-center">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-base font-semibold leading-tight">{Math.round(planned)}g</p>
+      {goal != null ? (
+        <>
+          <div className="h-1 bg-slate-200 rounded overflow-hidden mt-1">
+            <div className={`h-full ${over ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-[10px] text-slate-400 mt-0.5">of {Math.round(goal)}g</p>
+        </>
+      ) : (
+        <Link to="/settings" className="text-[10px] text-emerald-700 underline">
+          set goal
+        </Link>
+      )}
+    </div>
+  );
+}
+
 // A labelled 0x-3x slider used both for a whole food entry and for a single
 // ingredient inside a planned recipe. `fraction` is the committed (server)
 // value; local drag state is tracked by the parent so macros preview live.
@@ -212,7 +239,12 @@ export default function Diary() {
 
         {data && dayTotals && (
           <div className="space-y-2">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:hidden bg-white shadow rounded p-3 grid grid-cols-3 gap-2">
+              <MacroMiniStat label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
+              <MacroMiniStat label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
+              <MacroMiniStat label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
+            </div>
+            <div className="hidden sm:grid sm:grid-cols-3 gap-4">
               <MacroGoalCard label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
               <MacroGoalCard label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
               <MacroGoalCard label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
