@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const navItems = [
-  { to: '/diary', label: 'Diary' },
+  { to: '/diary', label: 'Daily Plan' },
   { to: '/foods', label: 'Foods' },
   { to: '/recipes', label: 'Recipes' },
   { to: '/shopping-list', label: 'Shopping List' },

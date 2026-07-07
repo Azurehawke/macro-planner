@@ -11,8 +11,11 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   recipe that uses it
 - Each food shows every recipe currently using it ("used in"), updated live —
   no manual re-linking needed
-- A per-user **diary** to log meals for a day and track totals against daily
-  macro goals
+- A per-user **daily plan** for what you intend to eat (not a consumption log —
+  pair it with whatever app you already use to track what you actually ate).
+  Each planned food or recipe has a slider to dial its amount down or up
+  (e.g. plan in just half a bun from a sandwich recipe), with totals tracked
+  live against your daily macro goals
 - A **shopping list** shared by the whole household — add ingredients straight
   from a recipe (scaled by a servings multiplier) or as one-off items, and
   check items off collaboratively
@@ -71,8 +74,12 @@ The Vite dev server proxies `/api` to `http://localhost:3000` (override with
 - `recipes` + `recipe_components` — a recipe is a list of foods with a
   quantity in grams; macros are always computed on the fly from the current
   component data, so there's nothing to keep in sync manually.
-- `diary_entries` — a user logs a food or recipe eaten on a given date/meal
-  slot; recipe macros are scaled per gram of the finished recipe.
+- `diary_entries` + `diary_entry_components` — a user's plan for a given
+  date/meal slot. A food entry has one adjustable `fraction` (0x-3x of its
+  base quantity); a recipe entry snapshots each of the recipe's components
+  into `diary_entry_components`, each with its own independently adjustable
+  `fraction` — so a planned sandwich can be dialed down to "just half the
+  bottom bun" without changing the underlying recipe.
 - `shopping_lists` + `shopping_list_items` — scoped to a household (not a
   single user), so any household member can add to or check off the same
   list. Adding a recipe expands its components into (aggregated) list items.
