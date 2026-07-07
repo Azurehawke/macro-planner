@@ -69,13 +69,10 @@ function MacroGoalCard({ label, planned, goal }) {
 // value; local drag state is tracked by the parent so macros preview live.
 function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="truncate">{label}</span>
-        <span className="shrink-0 text-slate-500 text-xs">
-          {Math.round(quantityG)}g · {Math.round(macros.carbs_g)}c · {Math.round(macros.fat_g)}f ·{' '}
-          {Math.round(macros.protein_g)}p
-        </span>
+    <div className="rounded border border-slate-200 bg-slate-50 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium truncate">{label}</span>
+        <span className="shrink-0 text-sm font-semibold text-emerald-700">{fraction.toFixed(2)}x</span>
       </div>
       <input
         type="range"
@@ -89,6 +86,14 @@ function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit
         onKeyUp={onCommit}
         className="w-full accent-emerald-700"
       />
+      <div className="flex items-center justify-between gap-2 flex-wrap text-sm">
+        <span className="font-semibold text-slate-900">{Math.round(quantityG)}g</span>
+        <span className="text-slate-600">
+          <span className="font-semibold text-slate-800">{Math.round(macros.carbs_g)}g</span> carbs ·{' '}
+          <span className="font-semibold text-slate-800">{Math.round(macros.fat_g)}g</span> fat ·{' '}
+          <span className="font-semibold text-slate-800">{Math.round(macros.protein_g)}g</span> protein
+        </span>
+      </div>
     </div>
   );
 }
@@ -281,7 +286,7 @@ export default function Diary() {
               />
             ) : (
               <>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {preview.components.map((c) => (
                     <FractionSlider
                       key={c.food_id}
