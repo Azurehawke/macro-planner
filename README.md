@@ -71,6 +71,14 @@ https://fdc.nal.usda.gov/api-key-signup.html and set `USDA_FDC_API_KEY` in
 works). Search results are only ever a starting point — nothing is saved
 until you review and submit the add-food form yourself.
 
+Open Food Facts migrated its full-text search to a new Elasticsearch-backed
+service (`search.openfoodfacts.org`) that's still labeled beta on their end,
+so if you see an "Open Food Facts search failed" warning, check the `app`
+container logs (`docker compose logs app`) — a failed request logs the
+response status/body, and an unrecognized response shape logs a sample
+product, which is enough to fix the field mapping in
+`server/src/services/foodSearchProviders.js`.
+
 ## Local development (without Docker)
 
 Requires Node 20+ and a local Postgres.
