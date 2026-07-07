@@ -19,7 +19,9 @@ function setAuthCookie(res, token) {
   res.cookie('token', token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    // Secure by default; only disable for plain-HTTP testing (browsers drop
+    // Secure cookies over http://, which silently breaks auth) via COOKIE_SECURE=false.
+    secure: process.env.COOKIE_SECURE !== 'false',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 }

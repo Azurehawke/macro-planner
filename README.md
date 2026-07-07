@@ -50,6 +50,14 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 Data persists in the `db_data` Docker volume. To update after pulling new
 code: `docker compose up -d --build`.
 
+**Note on plain-HTTP testing:** the login cookie is marked `Secure` by
+default, which browsers silently refuse to store over `http://`. If you're
+sanity-checking the deploy by hitting the server's IP directly (before
+Cloudflare/DNS is wired up) and login seems to "work" but every other action
+says "Not authenticated", set `COOKIE_SECURE=false` in `.env` and
+`docker compose up -d` again. Switch it back to `true` once you're accessing
+the site over `https://`.
+
 ## Local development (without Docker)
 
 Requires Node 20+ and a local Postgres.
