@@ -3,6 +3,11 @@ import { api } from '../api/client.js';
 
 const emptyForm = { name: '', base_quantity_g: 100, carbs_g: '', fat_g: '', protein_g: '' };
 
+const SOURCE_LABELS = {
+  usda: 'USDA FoodData Central',
+  openfoodfacts: 'Open Food Facts',
+};
+
 export default function Foods() {
   const [foods, setFoods] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -10,6 +15,12 @@ export default function Foods() {
   const [expandedId, setExpandedId] = useState(null);
   const [usedIn, setUsedIn] = useState({});
   const [error, setError] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchWarnings, setSearchWarnings] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   const load = async () => {
     const { foods } = await api.get('/foods');
@@ -61,6 +72,35 @@ export default function Foods() {
     await load();
   };
 
+  const onSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchError('');
+    try {
+      const { results, warnings } = await api.get(`/food-search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchResults(results);
+      setSearchWarnings(warnings || []);
+    } catch (err) {
+      setSearchError(err.message);
+      setSearchResults(null);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const useSearchResult = (result) => {
+    setEditingId(null);
+    setForm({
+      name: result.name,
+      base_quantity_g: result.base_quantity_g,
+      carbs_g: result.carbs_g,
+      fat_g: result.fat_g,
+      protein_g: result.protein_g,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const toggleUsedIn = async (food) => {
     if (expandedId === food.id) {
       setExpandedId(null);
@@ -76,6 +116,62 @@ export default function Foods() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Foods</h1>
+
+      <div className="bg-white shadow rounded p-4 space-y-3">
+        <h2 className="font-medium">Search online</h2>
+        <form onSubmit={onSearch} className="flex gap-2">
+          <input
+            placeholder="e.g. hamburger bun"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 border rounded px-2 py-1"
+          />
+          <button
+            type="submit"
+            disabled={searching}
+            className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800 disabled:opacity-50 shrink-0"
+          >
+            {searching ? 'Searching...' : 'Search'}
+          </button>
+        </form>
+        {searchError && <p className="text-red-600 text-sm">{searchError}</p>}
+        {searchWarnings.map((w) => (
+          <p key={w} className="text-amber-600 text-xs">
+            {w}
+          </p>
+        ))}
+        {searchResults && (
+          <div className="divide-y border rounded">
+            {searchResults.length === 0 && (
+              <p className="p-3 text-sm text-slate-500">No matches found — try a different search term.</p>
+            )}
+            {searchResults.map((result) => (
+              <div key={`${result.source}:${result.externalId}`} className="p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">
+                    {result.name}
+                    {result.brand && <span className="text-slate-400 font-normal"> — {result.brand}</span>}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {SOURCE_LABELS[result.source] || result.source} · per 100g: {result.carbs_g}g carbs ·{' '}
+                    {result.fat_g}g fat · {result.protein_g}g protein · {Math.round(result.calories)} kcal
+                  </p>
+                </div>
+                <button
+                  onClick={() => useSearchResult(result)}
+                  className="shrink-0 border border-emerald-700 text-emerald-700 rounded px-3 py-1 text-sm hover:bg-emerald-50"
+                >
+                  Use this
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-slate-400">
+          Picking a result fills in the form below — review it (and adjust if it's not quite your product)
+          before adding it.
+        </p>
+      </div>
 
       <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 grid grid-cols-2 sm:grid-cols-6 gap-3 items-end">
         <div className="col-span-2 sm:col-span-2">

@@ -6,6 +6,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const foodsRoutes = require('./routes/foods');
+const foodSearchRoutes = require('./routes/foodSearch');
 const recipesRoutes = require('./routes/recipes');
 const diaryRoutes = require('./routes/diary');
 const shoppingRoutes = require('./routes/shopping');
@@ -22,6 +23,7 @@ function createApp() {
 
   app.use('/api/auth', authRoutes);
   app.use('/api/foods', foodsRoutes);
+  app.use('/api/food-search', foodSearchRoutes);
   app.use('/api/recipes', recipesRoutes);
   app.use('/api/diary', diaryRoutes);
   app.use('/api/shopping-lists', shoppingRoutes);

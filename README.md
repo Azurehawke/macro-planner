@@ -21,6 +21,9 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 - A **shopping list** shared by the whole household — add ingredients straight
   from a recipe (scaled by a servings multiplier) or as one-off items, and
   check items off collaboratively
+- **Search online** for a food (e.g. "hamburger bun") from the Foods page —
+  queries USDA FoodData Central and Open Food Facts and lets you pick a match
+  to prefill the add-food form, which you can still review/edit before saving
 
 ## Stack
 
@@ -59,6 +62,14 @@ Cloudflare/DNS is wired up) and login seems to "work" but every other action
 says "Not authenticated", set `COOKIE_SECURE=false` in `.env` and
 `docker compose up -d` again. Switch it back to `true` once you're accessing
 the site over `https://`.
+
+**Optional: online food search.** The Foods page can search USDA FoodData
+Central and Open Food Facts to prefill a new food's macros. Open Food Facts
+needs no setup. For USDA, sign up for a free key at
+https://fdc.nal.usda.gov/api-key-signup.html and set `USDA_FDC_API_KEY` in
+`.env`; without it, USDA results are just skipped (Open Food Facts still
+works). Search results are only ever a starting point — nothing is saved
+until you review and submit the add-food form yourself.
 
 ## Local development (without Docker)
 
