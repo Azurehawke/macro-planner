@@ -38,9 +38,9 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
    docker compose up -d --build
    ```
 
-3. The app is now listening on `http://<server>:3000` (change `APP_PORT` in
-   `.env` if you want a different port). Put a reverse proxy (nginx, Caddy,
-   Traefik) in front for TLS/HTTPS if exposing it outside your LAN.
+3. The app is now listening on `http://<server>:9125` (change `APP_PORT` in
+   `.env` if you want a different port). No reverse proxy is required — point
+   Cloudflare (or your tunnel/DNS setup of choice) at this port directly.
 
 Data persists in the `db_data` Docker volume. To update after pulling new
 code: `docker compose up -d --build`.
