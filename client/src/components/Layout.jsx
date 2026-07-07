@@ -8,6 +8,7 @@ const navItems = [
   { to: '/recipes', label: 'Recipes' },
   { to: '/shopping-list', label: 'Shopping List' },
   { to: '/household', label: 'Household' },
+  { to: '/settings', label: 'Settings' },
 ];
 
 export default function Layout() {

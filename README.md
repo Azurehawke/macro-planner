@@ -11,11 +11,13 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   recipe that uses it
 - Each food shows every recipe currently using it ("used in"), updated live —
   no manual re-linking needed
+- Per-user **daily macro goals**, set on the Settings page
 - A per-user **daily plan** for what you intend to eat (not a consumption log —
   pair it with whatever app you already use to track what you actually ate).
   Each planned food or recipe has a slider to dial its amount down or up
-  (e.g. plan in just half a bun from a sandwich recipe), with totals tracked
-  live against your daily macro goals
+  (e.g. plan in just half a bun from a sandwich recipe). Carbs/fat/protein
+  each get their own card showing what's planned so far and what's left
+  against your Settings-page goal
 - A **shopping list** shared by the whole household — add ingredients straight
   from a recipe (scaled by a servings multiplier) or as one-off items, and
   check items off collaboratively

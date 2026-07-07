@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
-import MacroGoalsForm from '../components/MacroGoalsForm.jsx';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -30,25 +30,36 @@ function sumMacros(list) {
   );
 }
 
-function GoalBar({ label, value, goal }) {
-  const pct = goal ? Math.min(100, Math.round((value / goal) * 100)) : null;
-  return (
-    <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span>{label}</span>
-        <span>
-          {Math.round(value)}
-          {goal ? ` / ${Math.round(goal)}g` : 'g'}
-        </span>
+// One card per macro: how much is planned so far today, and how much of the
+// goal (set on the Settings page) is left. Goes red/over instead of just
+// capping at 100% so overshooting the plan is obvious.
+function MacroGoalCard({ label, planned, goal }) {
+  if (goal == null) {
+    return (
+      <div className="bg-white shadow rounded p-4">
+        <h3 className="text-sm font-medium text-slate-500">{label}</h3>
+        <p className="text-2xl font-semibold mt-1">{Math.round(planned)}g</p>
+        <p className="text-xs text-slate-400 mt-1">
+          planned · <Link to="/settings" className="text-emerald-700 underline">set a goal</Link>
+        </p>
       </div>
-      {goal != null && (
-        <div className="h-2 bg-slate-200 rounded overflow-hidden">
-          <div
-            className={`h-full ${pct >= 100 ? 'bg-amber-500' : 'bg-emerald-600'}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
+    );
+  }
+
+  const remaining = goal - planned;
+  const over = remaining < 0;
+  const pct = Math.min(100, Math.round((planned / goal) * 100));
+  return (
+    <div className="bg-white shadow rounded p-4">
+      <h3 className="text-sm font-medium text-slate-500">{label}</h3>
+      <p className="text-2xl font-semibold mt-1">{Math.round(planned)}g</p>
+      <p className={`text-sm mt-1 ${over ? 'text-red-600' : 'text-emerald-700'}`}>
+        {over ? `${Math.round(-remaining)}g over goal` : `${Math.round(remaining)}g remaining`}
+      </p>
+      <div className="h-2 bg-slate-200 rounded overflow-hidden mt-2">
+        <div className={`h-full ${over ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-slate-400 mt-1">Goal: {Math.round(goal)}g</p>
     </div>
   );
 }
@@ -188,15 +199,14 @@ export default function Diary() {
         />
       </div>
 
-      <MacroGoalsForm />
-
       {data && dayTotals && (
-        <div className="bg-white shadow rounded p-4 space-y-3">
-          <h2 className="font-medium">Totals for {date}</h2>
-          <GoalBar label="Carbs" value={dayTotals.carbs_g} goal={data.goals.carbs_g} />
-          <GoalBar label="Fat" value={dayTotals.fat_g} goal={data.goals.fat_g} />
-          <GoalBar label="Protein" value={dayTotals.protein_g} goal={data.goals.protein_g} />
-          <p className="text-sm text-slate-500">{Math.round(dayTotals.calories)} kcal total</p>
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <MacroGoalCard label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
+            <MacroGoalCard label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
+            <MacroGoalCard label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
+          </div>
+          <p className="text-sm text-slate-500">{Math.round(dayTotals.calories)} kcal planned total</p>
         </div>
       )}
 

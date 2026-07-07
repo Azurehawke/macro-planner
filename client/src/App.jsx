@@ -9,6 +9,7 @@ import Foods from './pages/Foods.jsx';
 import Recipes from './pages/Recipes.jsx';
 import ShoppingList from './pages/ShoppingList.jsx';
 import Household from './pages/Household.jsx';
+import Settings from './pages/Settings.jsx';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/recipes" element={<Recipes />} />
         <Route path="/shopping-list" element={<ShoppingList />} />
         <Route path="/household" element={<Household />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/diary" replace />} />
       </Route>
     </Routes>
