@@ -69,8 +69,14 @@ function MacroGoalCard({ label, planned, goal }) {
 // value; local drag state is tracked by the parent so macros preview live.
 function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-40 shrink-0 text-sm">{label}</span>
+    <div>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="truncate">{label}</span>
+        <span className="shrink-0 text-slate-500 text-xs">
+          {Math.round(quantityG)}g · {Math.round(macros.carbs_g)}c · {Math.round(macros.fat_g)}f ·{' '}
+          {Math.round(macros.protein_g)}p
+        </span>
+      </div>
       <input
         type="range"
         min="0"
@@ -81,12 +87,8 @@ function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit
         onMouseUp={onCommit}
         onTouchEnd={onCommit}
         onKeyUp={onCommit}
-        className="flex-1 accent-emerald-700"
+        className="w-full accent-emerald-700"
       />
-      <span className="w-16 shrink-0 text-sm text-right">{Math.round(quantityG)}g</span>
-      <span className="w-40 shrink-0 text-xs text-slate-500 text-right">
-        {Math.round(macros.carbs_g)}c · {Math.round(macros.fat_g)}f · {Math.round(macros.protein_g)}p
-      </span>
     </div>
   );
 }

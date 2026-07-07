@@ -97,11 +97,11 @@ export default function ShoppingList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-semibold">Shopping List</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={activeListId || ''}
             onChange={(e) => setActiveListId(Number(e.target.value))}
-            className="border rounded px-2 py-1"
+            className="border rounded px-2 py-1 min-w-0"
           >
             {lists.map((l) => (
               <option key={l.id} value={l.id}>
@@ -109,14 +109,14 @@ export default function ShoppingList() {
               </option>
             ))}
           </select>
-          <form onSubmit={createList} className="flex gap-1">
+          <form onSubmit={createList} className="flex gap-1 min-w-0">
             <input
               placeholder="New list name"
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
-              className="border rounded px-2 py-1 text-sm"
+              className="border rounded px-2 py-1 text-sm w-32 min-w-0"
             />
-            <button type="submit" className="border rounded px-2 py-1 text-sm">
+            <button type="submit" className="border rounded px-2 py-1 text-sm shrink-0">
               + New list
             </button>
           </form>
