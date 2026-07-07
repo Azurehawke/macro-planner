@@ -48,7 +48,9 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
    Cloudflare (or your tunnel/DNS setup of choice) at this port directly.
 
 Data persists in the `db_data` Docker volume. To update after pulling new
-code: `docker compose up -d --build`.
+code: `docker compose up -d --build` — database schema changes are applied
+automatically on startup (see `server/src/migrations/`, tracked in a
+`schema_migrations` table) without needing to reset the volume or lose data.
 
 **Note on plain-HTTP testing:** the login cookie is marked `Secure` by
 default, which browsers silently refuse to store over `http://`. If you're
