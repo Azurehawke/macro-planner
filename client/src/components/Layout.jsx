@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -18,15 +18,31 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const headerRef = useRef(null);
 
   // Any navigation (including the browser back/forward buttons) should close the menu.
   useEffect(() => {
     setMenuOpen(false);
   }, [location]);
 
+  // Exposes the nav bar's real rendered height as a CSS variable, so pages
+  // (e.g. Daily Plan) can stick their own sticky headers exactly below it
+  // instead of guessing a pixel offset.
+  useEffect(() => {
+    const headerEl = headerRef.current;
+    if (!headerEl) return undefined;
+    const updateHeight = () => {
+      document.documentElement.style.setProperty('--app-header-height', `${headerEl.offsetHeight}px`);
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(headerEl);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-emerald-700 text-white">
+      <header ref={headerRef} className="sticky top-0 z-30 bg-emerald-700 text-white">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <span className="font-semibold text-lg">Macro Planner</span>
 

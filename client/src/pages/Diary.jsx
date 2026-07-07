@@ -195,74 +195,79 @@ export default function Diary() {
   const dayTotals = data ? sumMacros(previewed.map((p) => p.preview.macros)) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Daily Plan</h1>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="border rounded px-2 py-1"
-        />
+    <div>
+      <div
+        className="sticky z-20 bg-slate-50 pb-4 space-y-6 shadow-[0_4px_6px_-4px_rgba(0,0,0,0.15)]"
+        style={{ top: 'var(--app-header-height, 0px)' }}
+      >
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Daily Plan</h1>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border rounded px-2 py-1"
+          />
+        </div>
+
+        {data && dayTotals && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <MacroGoalCard label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
+              <MacroGoalCard label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
+              <MacroGoalCard label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
+            </div>
+            <p className="text-sm text-slate-500">{Math.round(dayTotals.calories)} kcal planned total</p>
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 flex flex-wrap gap-3 items-end">
+          <div>
+            <label className="block text-sm font-medium mb-1">Type</label>
+            <select
+              value={itemType}
+              onChange={(e) => {
+                setItemType(e.target.value);
+                setItemId('');
+              }}
+              className="border rounded px-2 py-1"
+            >
+              <option value="food">Food</option>
+              <option value="recipe">Recipe</option>
+            </select>
+          </div>
+          <div className="flex-1 min-w-[10rem]">
+            <label className="block text-sm font-medium mb-1">Item</label>
+            <select required value={itemId} onChange={(e) => setItemId(e.target.value)} className="w-full border rounded px-2 py-1">
+              <option value="">Select...</option>
+              {options.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Meal</label>
+            <select value={mealSlot} onChange={(e) => setMealSlot(e.target.value)} className="border rounded px-2 py-1">
+              {MEAL_SLOTS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
+            Add to plan
+          </button>
+          <p className="text-xs text-slate-500 w-full">
+            Adds a full serving — dial it in with the slider below once it's added.
+          </p>
+          {error && <p className="text-red-600 text-sm w-full">{error}</p>}
+        </form>
       </div>
 
-      {data && dayTotals && (
-        <div className="space-y-2">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MacroGoalCard label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
-            <MacroGoalCard label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
-            <MacroGoalCard label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
-          </div>
-          <p className="text-sm text-slate-500">{Math.round(dayTotals.calories)} kcal planned total</p>
-        </div>
-      )}
-
-      <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-sm font-medium mb-1">Type</label>
-          <select
-            value={itemType}
-            onChange={(e) => {
-              setItemType(e.target.value);
-              setItemId('');
-            }}
-            className="border rounded px-2 py-1"
-          >
-            <option value="food">Food</option>
-            <option value="recipe">Recipe</option>
-          </select>
-        </div>
-        <div className="flex-1 min-w-[10rem]">
-          <label className="block text-sm font-medium mb-1">Item</label>
-          <select required value={itemId} onChange={(e) => setItemId(e.target.value)} className="w-full border rounded px-2 py-1">
-            <option value="">Select...</option>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Meal</label>
-          <select value={mealSlot} onChange={(e) => setMealSlot(e.target.value)} className="border rounded px-2 py-1">
-            {MEAL_SLOTS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
-          Add to plan
-        </button>
-        <p className="text-xs text-slate-500 w-full">
-          Adds a full serving — dial it in with the slider below once it's added.
-        </p>
-        {error && <p className="text-red-600 text-sm w-full">{error}</p>}
-      </form>
-
-      <div className="bg-white shadow rounded divide-y">
+      <div className="bg-white shadow rounded divide-y mt-6 mb-6">
         {data && data.entries.length === 0 && <p className="p-4 text-slate-500">Nothing planned yet.</p>}
         {previewed.map(({ entry, preview }) => (
           <div key={entry.id} className="p-4 space-y-2">
