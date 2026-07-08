@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ACTIVITY_LEVELS, GOALS, WEEKLY_LOSS_RATES, calculateMacros } from '../utils/macroCalculator.js';
+import {
+  ACTIVITY_LEVELS,
+  GOALS,
+  WEEKLY_LOSS_RATES,
+  calculateMacros,
+  estimateWeeksToGoal,
+} from '../utils/macroCalculator.js';
 
 const emptyForm = {
   sex: '',
@@ -9,9 +15,11 @@ const emptyForm = {
   weightLb: '',
   heightFt: '',
   heightIn: '',
+  knownBmr: '',
   activity: 'sedentary',
   goal: 'maintain',
   weeklyLossLb: 1,
+  goalWeightLb: '',
 };
 
 export default function MacroCalculatorForm() {
@@ -22,7 +30,11 @@ export default function MacroCalculatorForm() {
   const ageYears = Number(form.ageYears);
   const weightLb = Number(form.weightLb);
   const heightIn = Number(form.heightFt) * 12 + Number(form.heightIn || 0);
-  const canCalculate = form.sex && ageYears > 0 && weightLb > 0 && heightIn > 0;
+  const knownBmr = Number(form.knownBmr);
+  const hasKnownBmr = knownBmr > 0;
+  // With a known BMR, sex/age/height are irrelevant to the calculation -
+  // only weight (for the goal-weight estimate) and activity/goal are needed.
+  const canCalculate = weightLb > 0 && (hasKnownBmr || (form.sex && ageYears > 0 && heightIn > 0));
 
   const result = canCalculate
     ? calculateMacros({
@@ -33,8 +45,14 @@ export default function MacroCalculatorForm() {
         activity: form.activity,
         goal: form.goal,
         weeklyLossLb: Number(form.weeklyLossLb),
+        knownBmr: hasKnownBmr ? knownBmr : undefined,
       })
     : null;
+
+  const weeksToGoal =
+    result && form.goal === 'lose'
+      ? estimateWeeksToGoal(weightLb, Number(form.goalWeightLb), Number(form.weeklyLossLb))
+      : null;
 
   const useTheseTargets = async () => {
     if (!result) return;
@@ -88,7 +106,8 @@ export default function MacroCalculatorForm() {
             min="1"
             value={form.ageYears}
             onChange={(e) => setForm({ ...form, ageYears: e.target.value })}
-            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+            disabled={hasKnownBmr}
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 disabled:opacity-50"
           />
         </div>
         <div>
@@ -111,7 +130,8 @@ export default function MacroCalculatorForm() {
               placeholder="ft"
               value={form.heightFt}
               onChange={(e) => setForm({ ...form, heightFt: e.target.value })}
-              className="w-1/2 border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+              disabled={hasKnownBmr}
+              className="w-1/2 border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 disabled:opacity-50"
             />
             <input
               type="number"
@@ -120,13 +140,28 @@ export default function MacroCalculatorForm() {
               placeholder="in"
               value={form.heightIn}
               onChange={(e) => setForm({ ...form, heightIn: e.target.value })}
-              className="w-1/2 border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+              disabled={hasKnownBmr}
+              className="w-1/2 border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 disabled:opacity-50"
             />
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium mb-1">BMR (optional, if known)</label>
+          <input
+            type="number"
+            min="0"
+            placeholder="e.g. from a metabolic test"
+            value={form.knownBmr}
+            onChange={(e) => setForm({ ...form, knownBmr: e.target.value })}
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+          />
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+            Leave blank to estimate from sex/age/height above.
+          </p>
+        </div>
         <div>
           <label className="block text-sm font-medium mb-1">Activity level</label>
           <select
@@ -141,6 +176,9 @@ export default function MacroCalculatorForm() {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-sm font-medium mb-1">Goal</label>
           <select
@@ -156,20 +194,33 @@ export default function MacroCalculatorForm() {
           </select>
         </div>
         {form.goal === 'lose' && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Weight loss per week</label>
-            <select
-              value={form.weeklyLossLb}
-              onChange={(e) => setForm({ ...form, weeklyLossLb: e.target.value })}
-              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
-            >
-              {WEEKLY_LOSS_RATES.map((rate) => (
-                <option key={rate} value={rate}>
-                  {rate} lb/week
-                </option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-1">Weight loss per week</label>
+              <select
+                value={form.weeklyLossLb}
+                onChange={(e) => setForm({ ...form, weeklyLossLb: e.target.value })}
+                className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+              >
+                {WEEKLY_LOSS_RATES.map((rate) => (
+                  <option key={rate} value={rate}>
+                    {rate} lb/week
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Goal weight (lbs, optional)</label>
+              <input
+                type="number"
+                min="1"
+                step="0.1"
+                value={form.goalWeightLb}
+                onChange={(e) => setForm({ ...form, goalWeightLb: e.target.value })}
+                className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+              />
+            </div>
+          </>
         )}
       </div>
 
@@ -199,8 +250,15 @@ export default function MacroCalculatorForm() {
               instead.
             </p>
           )}
+          {weeksToGoal != null && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              ~{weeksToGoal} week{weeksToGoal === 1 ? '' : 's'} to reach {form.goalWeightLb} lbs at{' '}
+              {form.weeklyLossLb} lb/week
+            </p>
+          )}
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            BMR {result.bmr} kcal · TDEE (maintenance) {result.tdee} kcal
+            BMR {result.bmr} kcal ({result.usingKnownBmr ? 'entered manually' : 'Mifflin-St Jeor estimate'}) ·
+            TDEE (maintenance) {result.tdee} kcal
             {form.goal === 'lose' &&
               ` · ${result.tdee - result.targetCalories} kcal/day deficit (${form.weeklyLossLb} lb/week)`}
           </p>
