@@ -30,6 +30,60 @@ function sumMacros(list) {
   );
 }
 
+function macroTableRow(label, planned, goal) {
+  const plannedStr = `${Math.round(planned)}g`;
+  if (goal == null) return `| ${label} | ${plannedStr} | — | — |`;
+  const remaining = goal - planned;
+  const remainingStr = remaining < 0 ? `${Math.round(-remaining)}g over` : `${Math.round(remaining)}g`;
+  return `| ${label} | ${plannedStr} | ${Math.round(goal)}g | ${remainingStr} |`;
+}
+
+function macroLine(macros) {
+  return `${Math.round(macros.carbs_g)}g carbs, ${Math.round(macros.fat_g)}g fat, ${Math.round(
+    macros.protein_g
+  )}g protein, ${Math.round(macros.calories)} kcal`;
+}
+
+// Renders the currently-displayed plan (including any un-committed slider
+// drags, so what you see is exactly what gets exported) as a markdown file.
+function buildMarkdown(date, goals, dayTotals, previewed) {
+  const lines = [`# Daily Plan — ${date}`, '', '## Macro Totals', '', '| Macro | Planned | Goal | Remaining |', '|---|---|---|---|'];
+  lines.push(macroTableRow('Carbs', dayTotals.carbs_g, goals.carbs_g));
+  lines.push(macroTableRow('Fat', dayTotals.fat_g, goals.fat_g));
+  lines.push(macroTableRow('Protein', dayTotals.protein_g, goals.protein_g));
+  lines.push('', `**${Math.round(dayTotals.calories)} kcal planned total**`, '');
+
+  const byMealSlot = new Map(MEAL_SLOTS.map((slot) => [slot, []]));
+  for (const item of previewed) {
+    const slot = item.entry.meal_slot;
+    if (!byMealSlot.has(slot)) byMealSlot.set(slot, []);
+    byMealSlot.get(slot).push(item);
+  }
+
+  for (const [slot, items] of byMealSlot) {
+    if (items.length === 0) continue;
+    lines.push(`## ${slot.charAt(0).toUpperCase()}${slot.slice(1)}`, '');
+    for (const { entry, preview } of items) {
+      if (entry.item_type === 'food') {
+        lines.push(`- ${entry.name} — ${Math.round(preview.quantity_g)}g (${macroLine(preview.macros)})`);
+      } else {
+        lines.push(`- ${entry.name}`);
+        for (const c of preview.components) {
+          lines.push(`  - ${c.food_name} — ${Math.round(c.quantity_g)}g (${macroLine(c.macros)})`);
+        }
+        lines.push(`  - Subtotal: ${macroLine(preview.macros)}`);
+      }
+    }
+    lines.push('');
+  }
+
+  if (previewed.length === 0) {
+    lines.push('_Nothing planned._', '');
+  }
+
+  return lines.join('\n');
+}
+
 // One card per macro: how much is planned so far today, and how much of the
 // goal (set on the Settings page) is left. Goes red/over instead of just
 // capping at 100% so overshooting the plan is obvious.
@@ -220,6 +274,19 @@ export default function Diary() {
 
   const previewed = data ? data.entries.map((e) => ({ entry: e, preview: previewEntry(e) })) : [];
   const dayTotals = data ? sumMacros(previewed.map((p) => p.preview.macros)) : null;
+
+  const exportMarkdown = () => {
+    const markdown = buildMarkdown(date, data.goals, dayTotals, previewed);
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `daily-plan-${date}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div>
