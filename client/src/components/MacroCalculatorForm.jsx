@@ -3,6 +3,8 @@ import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   ACTIVITY_LEVELS,
+  ATHLETE_FAT_PER_LB,
+  ATHLETE_PROTEIN_PER_LB,
   GOALS,
   WEEKLY_LOSS_RATES,
   calculateMacros,
@@ -20,6 +22,7 @@ const emptyForm = {
   goal: 'maintain',
   weeklyLossLb: 1,
   goalWeightLb: '',
+  useAthleteMacros: false,
 };
 
 export default function MacroCalculatorForm() {
@@ -46,6 +49,7 @@ export default function MacroCalculatorForm() {
         goal: form.goal,
         weeklyLossLb: Number(form.weeklyLossLb),
         knownBmr: hasKnownBmr ? knownBmr : undefined,
+        useAthleteMacros: form.useAthleteMacros,
       })
     : null;
 
@@ -224,6 +228,26 @@ export default function MacroCalculatorForm() {
         )}
       </div>
 
+      {form.goal === 'recomp' && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 rounded p-2">
+          Recomposition uses a modest deficit and a high, bodyweight-based protein target so you can
+          keep training hard while losing fat. Expect the scale to move slowly — track strength and
+          how clothes fit as well as weight.
+        </p>
+      )}
+
+      {form.goal !== 'recomp' && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.useAthleteMacros}
+            onChange={(e) => setForm({ ...form, useAthleteMacros: e.target.checked })}
+          />
+          Cross-training / athlete mode — base protein and fat on bodyweight instead of a
+          percentage of calories (for lifting, running, cycling, or other regular sports training)
+        </label>
+      )}
+
       {result && (
         <div className="border-t dark:border-slate-700 pt-3 space-y-2">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
@@ -261,7 +285,14 @@ export default function MacroCalculatorForm() {
             TDEE (maintenance) {result.tdee} kcal
             {form.goal === 'lose' &&
               ` · ${result.tdee - result.targetCalories} kcal/day deficit (${form.weeklyLossLb} lb/week)`}
+            {form.goal === 'recomp' && ` · ${result.tdee - result.targetCalories} kcal/day deficit`}
           </p>
+          {result.usedAthleteMacros && (
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Protein and fat set from bodyweight ({ATHLETE_PROTEIN_PER_LB}g/lb protein,{' '}
+              {ATHLETE_FAT_PER_LB}g/lb fat), carbs fill the rest of your calorie target.
+            </p>
+          )}
           <button
             type="button"
             onClick={useTheseTargets}

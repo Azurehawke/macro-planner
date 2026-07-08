@@ -25,13 +25,21 @@ export const WEEKLY_LOSS_RATES = [0.5, 1, 1.5, 2];
 const KCAL_PER_LB = 3500;
 
 // splits are round-number picks within MyFitnessPal's published ranges for
-// each goal (carbs/protein/fat, must sum to 1). "lose" has no fixed
-// calorieAdjustment - its deficit comes from the chosen weekly loss rate.
+// each goal (carbs/protein/fat, must sum to 1) - used unless athlete-style
+// bodyweight-based macros are requested (see ATHLETE_* below). "lose" has no
+// fixed calorieAdjustment - its deficit comes from the chosen weekly rate.
+// "recomp" always uses athlete-style macros (see calculateMacros) since a
+// simultaneous muscle-gain/fat-loss goal is exactly what that's for.
 export const GOALS = [
   {
     value: 'lose',
     label: 'Lose weight',
     splits: { carbs: 0.4, protein: 0.3, fat: 0.3 },
+  },
+  {
+    value: 'recomp',
+    label: 'Body recomposition (build muscle + lose fat)',
+    calorieAdjustment: -250,
   },
   {
     value: 'maintain',
@@ -47,6 +55,15 @@ export const GOALS = [
   },
 ];
 
+// "Athlete" macros anchor protein and fat to bodyweight (grams per lb)
+// instead of a percentage of calories, with carbs filling whatever's left.
+// 1g protein/lb is a widely-cited target for people strength training while
+// in a deficit or recomposing (percentage splits under-serve protein for
+// heavy training volume, especially at lower calorie levels); 0.35g fat/lb
+// is a sensible floor regardless of calorie level for hormone health.
+export const ATHLETE_PROTEIN_PER_LB = 1.0;
+export const ATHLETE_FAT_PER_LB = 0.35;
+
 // Below this, even an aggressive deficit shouldn't push the target -
 // matches common calculators' safety floor.
 const MIN_CALORIES = 1200;
@@ -54,10 +71,40 @@ const MIN_CALORIES = 1200;
 const LB_TO_KG = 0.45359237;
 const IN_TO_CM = 2.54;
 
+function athleteMacros(targetCalories, weightLb) {
+  const protein_g = Math.round(weightLb * ATHLETE_PROTEIN_PER_LB);
+  const fat_g = Math.round(weightLb * ATHLETE_FAT_PER_LB);
+  // Floors at 0 rather than going negative for a heavy athlete whose
+  // protein+fat alone would exceed a severely capped (MIN_CALORIES) target.
+  const remaining = Math.max(0, targetCalories - protein_g * 4 - fat_g * 9);
+  const carbs_g = Math.round(remaining / 4);
+  return { carbs_g, fat_g, protein_g };
+}
+
+function percentSplitMacros(targetCalories, splits) {
+  return {
+    carbs_g: Math.round((targetCalories * splits.carbs) / 4),
+    protein_g: Math.round((targetCalories * splits.protein) / 4),
+    fat_g: Math.round((targetCalories * splits.fat) / 9),
+  };
+}
+
 // If knownBmr is supplied (e.g. from a DEXA scan or metabolic cart test),
 // it's used as-is instead of the Mifflin-St Jeor estimate - a measured BMR
 // is more accurate than any formula, which is only ever a population average.
-export function calculateMacros({ sex, ageYears, weightLb, heightIn, activity, goal, weeklyLossLb, knownBmr }) {
+// useAthleteMacros opts lose/maintain/gain into the same bodyweight-based
+// protein/fat approach that "recomp" always uses.
+export function calculateMacros({
+  sex,
+  ageYears,
+  weightLb,
+  heightIn,
+  activity,
+  goal,
+  weeklyLossLb,
+  knownBmr,
+  useAthleteMacros,
+}) {
   const usingKnownBmr = Boolean(knownBmr && knownBmr > 0);
 
   let bmr;
@@ -79,9 +126,10 @@ export function calculateMacros({ sex, ageYears, weightLb, heightIn, activity, g
   const targetCalories = Math.round(Math.max(MIN_CALORIES, rawTarget));
   const cappedAtFloor = rawTarget < MIN_CALORIES;
 
-  const carbs_g = Math.round((targetCalories * goalInfo.splits.carbs) / 4);
-  const protein_g = Math.round((targetCalories * goalInfo.splits.protein) / 4);
-  const fat_g = Math.round((targetCalories * goalInfo.splits.fat) / 9);
+  const usedAthleteMacros = goal === 'recomp' || Boolean(useAthleteMacros);
+  const { carbs_g, fat_g, protein_g } = usedAthleteMacros
+    ? athleteMacros(targetCalories, weightLb)
+    : percentSplitMacros(targetCalories, goalInfo.splits);
 
   return {
     bmr: Math.round(bmr),
@@ -89,6 +137,7 @@ export function calculateMacros({ sex, ageYears, weightLb, heightIn, activity, g
     tdee: Math.round(tdee),
     targetCalories,
     cappedAtFloor,
+    usedAthleteMacros,
     carbs_g,
     fat_g,
     protein_g,

@@ -17,9 +17,15 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   plus an optional goal weight with an estimated time-to-goal) using the
   Mifflin-St Jeor formula, the same one MyFitnessPal's calculator is built
   on. If you already know your BMR (e.g. from a metabolic test), you can
-  enter it directly instead of estimating it. "Use these targets" writes
-  straight into your goals,
-  so it's easy to recompute every 15-20 lbs or whenever your goal changes
+  enter it directly instead of estimating it. A **Body recomposition** goal
+  (build muscle while losing fat) is available alongside Lose/Maintain/Gain,
+  using a modest deficit with protein and fat set from bodyweight rather than
+  a percentage of calories. That same bodyweight-based approach can also be
+  opted into for Lose/Maintain/Gain via a "cross-training / athlete mode"
+  checkbox, for anyone training heavily (lifting, running, cycling, sports)
+  who wants a higher protein floor than the standard percentage split gives.
+  "Use these targets" writes straight into your goals, so it's easy to
+  recompute every 15-20 lbs or whenever your goal changes
 - A per-user **daily plan** for what you intend to eat (not a consumption log —
   pair it with whatever app you already use to track what you actually ate).
   Each planned food or recipe has a slider to dial its amount down or up
