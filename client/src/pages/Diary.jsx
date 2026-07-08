@@ -188,6 +188,7 @@ export default function Diary() {
   const [itemId, setItemId] = useState('');
   const [mealSlot, setMealSlot] = useState('breakfast');
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // Local, optimistic fraction overrides so dragging a slider feels instant.
   // Keyed by entry id for food entries, `${entryId}:${foodId}` for components.
@@ -275,7 +276,7 @@ export default function Diary() {
   const previewed = data ? data.entries.map((e) => ({ entry: e, preview: previewEntry(e) })) : [];
   const dayTotals = data ? sumMacros(previewed.map((p) => p.preview.macros)) : null;
 
-  const exportMarkdown = () => {
+  const downloadMarkdown = () => {
     const markdown = buildMarkdown(date, data.goals, dayTotals, previewed);
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -288,20 +289,59 @@ export default function Diary() {
     URL.revokeObjectURL(url);
   };
 
+  const copyMarkdown = async () => {
+    const markdown = buildMarkdown(date, data.goals, dayTotals, previewed);
+    try {
+      await navigator.clipboard.writeText(markdown);
+    } catch {
+      // Clipboard API needs a secure context; fall back to the old-school approach.
+      const textarea = document.createElement('textarea');
+      textarea.value = markdown;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div>
       <div
         className="sticky z-20 bg-slate-50 pb-4 space-y-6 shadow-[0_4px_6px_-4px_rgba(0,0,0,0.15)]"
         style={{ top: 'var(--app-header-height, 0px)' }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h1 className="text-xl font-semibold">Daily Plan</h1>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="border rounded px-2 py-1"
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            {data && (
+              <>
+                <button
+                  onClick={copyMarkdown}
+                  className="border rounded px-3 py-1 text-sm hover:bg-slate-50"
+                  title="Copy the plan as a markdown table"
+                >
+                  {copied ? 'Copied!' : 'Copy as markdown'}
+                </button>
+                <button
+                  onClick={downloadMarkdown}
+                  className="border rounded px-3 py-1 text-sm hover:bg-slate-50"
+                  title="Download the plan as a .md file"
+                >
+                  Download .md
+                </button>
+              </>
+            )}
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="border rounded px-2 py-1"
+            />
+          </div>
         </div>
 
         {data && dayTotals && (
