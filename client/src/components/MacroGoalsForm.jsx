@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -10,6 +10,16 @@ export default function MacroGoalsForm() {
     daily_protein_goal_g: user?.daily_protein_goal_g || '',
   });
   const [saved, setSaved] = useState(false);
+
+  // Keep this in sync if the goals were updated elsewhere (e.g. the macro
+  // calculator below saving directly to the same user fields).
+  useEffect(() => {
+    setGoals({
+      daily_carbs_goal_g: user?.daily_carbs_goal_g || '',
+      daily_fat_goal_g: user?.daily_fat_goal_g || '',
+      daily_protein_goal_g: user?.daily_protein_goal_g || '',
+    });
+  }, [user?.daily_carbs_goal_g, user?.daily_fat_goal_g, user?.daily_protein_goal_g]);
 
   const saveGoals = async (e) => {
     e.preventDefault();
