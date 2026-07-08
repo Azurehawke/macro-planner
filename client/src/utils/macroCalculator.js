@@ -10,14 +10,20 @@ export const ACTIVITY_LEVELS = [
   { value: 'extra', label: 'Extra active (very hard exercise, physical job)', multiplier: 1.9 },
 ];
 
-// calorieAdjustment: a ~500 kcal deficit/surplus is the standard "about 1
-// lb/week" pace; splits are round-number picks within MyFitnessPal's
-// published ranges for each goal (carbs/protein/fat, must sum to 1).
+// A pound of body fat is ~3,500 kcal, so a target weekly loss rate converts
+// to a daily deficit as rate * 3500 / 7 (== rate * 500). This is how
+// MyFitnessPal's calculator derives its deficit from the rate you pick,
+// rather than using one fixed number regardless of how fast you want to lose.
+export const WEEKLY_LOSS_RATES = [0.5, 1, 1.5, 2];
+const KCAL_PER_LB = 3500;
+
+// splits are round-number picks within MyFitnessPal's published ranges for
+// each goal (carbs/protein/fat, must sum to 1). "lose" has no fixed
+// calorieAdjustment - its deficit comes from the chosen weekly loss rate.
 export const GOALS = [
   {
     value: 'lose',
     label: 'Lose weight',
-    calorieAdjustment: -500,
     splits: { carbs: 0.4, protein: 0.3, fat: 0.3 },
   },
   {
@@ -41,7 +47,7 @@ const MIN_CALORIES = 1200;
 const LB_TO_KG = 0.45359237;
 const IN_TO_CM = 2.54;
 
-export function calculateMacros({ sex, ageYears, weightLb, heightIn, activity, goal }) {
+export function calculateMacros({ sex, ageYears, weightLb, heightIn, activity, goal, weeklyLossLb }) {
   const weightKg = weightLb * LB_TO_KG;
   const heightCm = heightIn * IN_TO_CM;
 
@@ -51,7 +57,9 @@ export function calculateMacros({ sex, ageYears, weightLb, heightIn, activity, g
   const tdee = bmr * activityInfo.multiplier;
 
   const goalInfo = GOALS.find((g) => g.value === goal);
-  const rawTarget = tdee + goalInfo.calorieAdjustment;
+  const calorieAdjustment =
+    goal === 'lose' ? -((weeklyLossLb || 0) * KCAL_PER_LB) / 7 : goalInfo.calorieAdjustment;
+  const rawTarget = tdee + calorieAdjustment;
   const targetCalories = Math.round(Math.max(MIN_CALORIES, rawTarget));
   const cappedAtFloor = rawTarget < MIN_CALORIES;
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ACTIVITY_LEVELS, GOALS, calculateMacros } from '../utils/macroCalculator.js';
+import { ACTIVITY_LEVELS, GOALS, WEEKLY_LOSS_RATES, calculateMacros } from '../utils/macroCalculator.js';
 
 const emptyForm = {
   sex: '',
@@ -11,6 +11,7 @@ const emptyForm = {
   heightIn: '',
   activity: 'sedentary',
   goal: 'maintain',
+  weeklyLossLb: 1,
 };
 
 export default function MacroCalculatorForm() {
@@ -24,7 +25,15 @@ export default function MacroCalculatorForm() {
   const canCalculate = form.sex && ageYears > 0 && weightLb > 0 && heightIn > 0;
 
   const result = canCalculate
-    ? calculateMacros({ sex: form.sex, ageYears, weightLb, heightIn, activity: form.activity, goal: form.goal })
+    ? calculateMacros({
+        sex: form.sex,
+        ageYears,
+        weightLb,
+        heightIn,
+        activity: form.activity,
+        goal: form.goal,
+        weeklyLossLb: Number(form.weeklyLossLb),
+      })
     : null;
 
   const useTheseTargets = async () => {
@@ -146,6 +155,22 @@ export default function MacroCalculatorForm() {
             ))}
           </select>
         </div>
+        {form.goal === 'lose' && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Weight loss per week</label>
+            <select
+              value={form.weeklyLossLb}
+              onChange={(e) => setForm({ ...form, weeklyLossLb: e.target.value })}
+              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+            >
+              {WEEKLY_LOSS_RATES.map((rate) => (
+                <option key={rate} value={rate}>
+                  {rate} lb/week
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {result && (
@@ -176,6 +201,8 @@ export default function MacroCalculatorForm() {
           )}
           <p className="text-xs text-slate-400 dark:text-slate-500">
             BMR {result.bmr} kcal · TDEE (maintenance) {result.tdee} kcal
+            {form.goal === 'lose' &&
+              ` · ${result.tdee - result.targetCalories} kcal/day deficit (${form.weeklyLossLb} lb/week)`}
           </p>
           <button
             type="button"

@@ -13,8 +13,9 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   no manual re-linking needed
 - Per-user **daily macro goals**, set on the Settings page — either by hand,
   or via the built-in **macro calculator** (sex, age, weight, height, activity
-  level, goal) using the Mifflin-St Jeor formula, the same one MyFitnessPal's
-  calculator is built on. "Use these targets" writes straight into your goals,
+  level, goal, and — for weight loss — a target rate up to 2 lb/week) using
+  the Mifflin-St Jeor formula, the same one MyFitnessPal's calculator is
+  built on. "Use these targets" writes straight into your goals,
   so it's easy to recompute every 15-20 lbs or whenever your goal changes
 - A per-user **daily plan** for what you intend to eat (not a consumption log —
   pair it with whatever app you already use to track what you actually ate).
