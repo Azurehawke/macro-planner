@@ -29,17 +29,20 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form onSubmit={onSubmit} className="bg-white shadow rounded-lg p-8 w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-semibold text-emerald-700">Create an account</h1>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <form
+        onSubmit={onSubmit}
+        className="bg-white dark:bg-slate-800 shadow rounded-lg p-8 w-full max-w-sm space-y-4"
+      >
+        <h1 className="text-2xl font-semibold text-emerald-700 dark:text-emerald-400">Create an account</h1>
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
         <div>
           <label className="block text-sm font-medium mb-1">Name</label>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-3 py-2"
           />
         </div>
         <div>
@@ -49,7 +52,7 @@ export default function Register() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-3 py-2"
           />
         </div>
         <div>
@@ -60,11 +63,11 @@ export default function Register() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-3 py-2"
           />
         </div>
 
-        <div className="border-t pt-4 space-y-2">
+        <div className="border-t dark:border-slate-700 pt-4 space-y-2">
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1">
               <input
@@ -88,7 +91,7 @@ export default function Register() {
               placeholder="Household name (optional)"
               value={householdName}
               onChange={(e) => setHouseholdName(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-3 py-2"
             />
           ) : (
             <input
@@ -96,7 +99,7 @@ export default function Register() {
               required
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-3 py-2"
             />
           )}
         </div>
@@ -109,7 +112,10 @@ export default function Register() {
           {submitting ? 'Creating account...' : 'Create account'}
         </button>
         <p className="text-sm text-center">
-          Already have an account? <Link to="/login" className="text-emerald-700 underline">Log in</Link>
+          Already have an account?{' '}
+          <Link to="/login" className="text-emerald-700 dark:text-emerald-400 underline">
+            Log in
+          </Link>
         </p>
       </form>
     </div>

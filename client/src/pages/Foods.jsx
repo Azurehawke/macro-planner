@@ -133,7 +133,7 @@ export default function Foods() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Foods</h1>
 
-      <div ref={searchBoxRef} className="relative bg-white shadow rounded p-4 space-y-3">
+      <div ref={searchBoxRef} className="relative bg-white dark:bg-slate-800 shadow rounded p-4 space-y-3">
         <h2 className="font-medium">Search online</h2>
         <form onSubmit={onSearch} className="flex gap-2">
           <input
@@ -141,7 +141,7 @@ export default function Foods() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => (searchResults || searchError) && setShowDropdown(true)}
-            className="flex-1 border rounded px-2 py-1"
+            className="flex-1 border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
           <button
             type="submit"
@@ -153,30 +153,32 @@ export default function Foods() {
         </form>
 
         {showDropdown && (searchResults || searchError) && (
-          <div className="absolute left-4 right-4 top-full mt-1 z-20 bg-white border rounded shadow-lg max-h-96 overflow-y-auto">
-            <div className="flex items-center justify-between px-3 py-2 border-b bg-slate-50">
-              <span className="text-xs font-medium text-slate-500">Results</span>
+          <div className="absolute left-4 right-4 top-full mt-1 z-20 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded shadow-lg max-h-96 overflow-y-auto">
+            <div className="flex items-center justify-between px-3 py-2 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Results</span>
               <button
                 type="button"
                 onClick={() => setShowDropdown(false)}
                 aria-label="Close results"
-                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none"
               >
                 &times;
               </button>
             </div>
 
-            {searchError && <p className="text-red-600 text-sm p-3">{searchError}</p>}
+            {searchError && <p className="text-red-600 dark:text-red-400 text-sm p-3">{searchError}</p>}
             {searchWarnings.map((w) => (
-              <p key={w} className="text-amber-600 text-xs px-3 pt-2">
+              <p key={w} className="text-amber-600 dark:text-amber-400 text-xs px-3 pt-2">
                 {w}
               </p>
             ))}
             {searchResults && searchResults.length === 0 && (
-              <p className="p-3 text-sm text-slate-500">No matches found — try a different search term.</p>
+              <p className="p-3 text-sm text-slate-500 dark:text-slate-400">
+                No matches found — try a different search term.
+              </p>
             )}
             {searchResults && searchResults.length > 0 && (
-              <div className="divide-y">
+              <div className="divide-y dark:divide-slate-700">
                 {searchResults.map((result) => (
                   <div
                     key={`${result.source}:${result.externalId}`}
@@ -185,16 +187,18 @@ export default function Foods() {
                     <div className="min-w-0">
                       <p className="font-medium truncate">
                         {result.name}
-                        {result.brand && <span className="text-slate-400 font-normal"> — {result.brand}</span>}
+                        {result.brand && (
+                          <span className="text-slate-400 dark:text-slate-500 font-normal"> — {result.brand}</span>
+                        )}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
                         {SOURCE_LABELS[result.source] || result.source} · per 100g: {result.carbs_g}g carbs ·{' '}
                         {result.fat_g}g fat · {result.protein_g}g protein · {Math.round(result.calories)} kcal
                       </p>
                     </div>
                     <button
                       onClick={() => useSearchResult(result)}
-                      className="shrink-0 border border-emerald-700 text-emerald-700 rounded px-3 py-1 text-sm hover:bg-emerald-50"
+                      className="shrink-0 border border-emerald-700 dark:border-emerald-400 text-emerald-700 dark:text-emerald-400 rounded px-3 py-1 text-sm hover:bg-emerald-50 dark:hover:bg-slate-700"
                     >
                       Use this
                     </button>
@@ -202,7 +206,7 @@ export default function Foods() {
                 ))}
               </div>
             )}
-            <p className="text-xs text-slate-400 p-3 border-t">
+            <p className="text-xs text-slate-400 dark:text-slate-500 p-3 border-t dark:border-slate-700">
               Picking a result fills in the form below — review it (and adjust if it's not quite your
               product) before adding it.
             </p>
@@ -210,14 +214,17 @@ export default function Foods() {
         )}
       </div>
 
-      <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 grid grid-cols-2 sm:grid-cols-6 gap-3 items-end">
+      <form
+        onSubmit={onSubmit}
+        className="bg-white dark:bg-slate-800 shadow rounded p-4 grid grid-cols-2 sm:grid-cols-6 gap-3 items-end"
+      >
         <div className="col-span-2 sm:col-span-2">
           <label className="block text-sm font-medium mb-1">Name</label>
           <input
             required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div>
@@ -228,7 +235,7 @@ export default function Foods() {
             required
             value={form.base_quantity_g}
             onChange={(e) => setForm({ ...form, base_quantity_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div>
@@ -240,7 +247,7 @@ export default function Foods() {
             required
             value={form.carbs_g}
             onChange={(e) => setForm({ ...form, carbs_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div>
@@ -252,7 +259,7 @@ export default function Foods() {
             required
             value={form.fat_g}
             onChange={(e) => setForm({ ...form, fat_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div>
@@ -264,7 +271,7 @@ export default function Foods() {
             required
             value={form.protein_g}
             onChange={(e) => setForm({ ...form, protein_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div className="col-span-2 sm:col-span-6 flex gap-2">
@@ -278,41 +285,43 @@ export default function Foods() {
                 setEditingId(null);
                 setForm(emptyForm);
               }}
-              className="border rounded px-4 py-2"
+              className="border dark:border-slate-600 rounded px-4 py-2"
             >
               Cancel
             </button>
           )}
         </div>
-        {error && <p className="text-red-600 text-sm col-span-6">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm col-span-6">{error}</p>}
       </form>
 
-      <div className="bg-white shadow rounded divide-y">
-        {foods.length === 0 && <p className="p-4 text-slate-500">No foods yet — add your first ingredient above.</p>}
+      <div className="bg-white dark:bg-slate-800 shadow rounded divide-y dark:divide-slate-700">
+        {foods.length === 0 && (
+          <p className="p-4 text-slate-500 dark:text-slate-400">No foods yet — add your first ingredient above.</p>
+        )}
         {foods.map((food) => (
           <div key={food.id} className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{food.name}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Per {food.base_quantity_g}g: {Number(food.carbs_g)}g carbs · {Number(food.fat_g)}g fat ·{' '}
                   {Number(food.protein_g)}g protein · {Math.round(food.calories)} kcal
                 </p>
               </div>
               <div className="flex gap-2 text-sm">
-                <button onClick={() => toggleUsedIn(food)} className="text-emerald-700 underline">
+                <button onClick={() => toggleUsedIn(food)} className="text-emerald-700 dark:text-emerald-400 underline">
                   Used in
                 </button>
-                <button onClick={() => startEdit(food)} className="text-slate-600 underline">
+                <button onClick={() => startEdit(food)} className="text-slate-600 dark:text-slate-300 underline">
                   Edit
                 </button>
-                <button onClick={() => remove(food.id)} className="text-red-600 underline">
+                <button onClick={() => remove(food.id)} className="text-red-600 dark:text-red-400 underline">
                   Delete
                 </button>
               </div>
             </div>
             {expandedId === food.id && (
-              <div className="mt-2 text-sm text-slate-600">
+              <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 {usedIn[food.id] && usedIn[food.id].length > 0 ? (
                   <ul className="list-disc list-inside">
                     {usedIn[food.id].map((r) => (

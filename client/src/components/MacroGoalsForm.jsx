@@ -24,7 +24,7 @@ export default function MacroGoalsForm() {
   };
 
   return (
-    <form onSubmit={saveGoals} className="bg-white shadow rounded p-4 space-y-3">
+    <form onSubmit={saveGoals} className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-3">
       <h2 className="font-medium">Daily macro goals</h2>
       <div className="grid grid-cols-3 gap-3">
         <div>
@@ -34,7 +34,7 @@ export default function MacroGoalsForm() {
             min="0"
             value={goals.daily_carbs_goal_g}
             onChange={(e) => setGoals({ ...goals, daily_carbs_goal_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div>
@@ -44,7 +44,7 @@ export default function MacroGoalsForm() {
             min="0"
             value={goals.daily_fat_goal_g}
             onChange={(e) => setGoals({ ...goals, daily_fat_goal_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
         <div>
@@ -54,14 +54,14 @@ export default function MacroGoalsForm() {
             min="0"
             value={goals.daily_protein_goal_g}
             onChange={(e) => setGoals({ ...goals, daily_protein_goal_g: e.target.value })}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
       </div>
       <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
         Save goals
       </button>
-      {saved && <span className="text-emerald-700 text-sm ml-2">Saved!</span>}
+      {saved && <span className="text-emerald-700 dark:text-emerald-400 text-sm ml-2">Saved!</span>}
     </form>
   );
 }

@@ -78,14 +78,14 @@ export default function Recipes() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Recipes</h1>
 
-      <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 space-y-3">
+      <form onSubmit={onSubmit} className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-3">
         <div>
           <label className="block text-sm font-medium mb-1">Recipe name</label>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full border rounded px-2 py-1 max-w-sm"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 max-w-sm"
           />
         </div>
 
@@ -97,7 +97,7 @@ export default function Recipes() {
                 required
                 value={c.food_id}
                 onChange={(e) => updateComponent(idx, 'food_id', e.target.value)}
-                className="border rounded px-2 py-1 flex-1"
+                className="border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 flex-1"
               >
                 <option value="">Select food...</option>
                 {foods.map((f) => (
@@ -114,16 +114,20 @@ export default function Recipes() {
                 placeholder="grams"
                 value={c.quantity_g}
                 onChange={(e) => updateComponent(idx, 'quantity_g', e.target.value)}
-                className="border rounded px-2 py-1 w-28"
+                className="border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 w-28"
               />
               {components.length > 1 && (
-                <button type="button" onClick={() => removeComponentRow(idx)} className="text-red-600 text-sm">
+                <button
+                  type="button"
+                  onClick={() => removeComponentRow(idx)}
+                  className="text-red-600 dark:text-red-400 text-sm"
+                >
                   Remove
                 </button>
               )}
             </div>
           ))}
-          <button type="button" onClick={addComponentRow} className="text-emerald-700 text-sm underline">
+          <button type="button" onClick={addComponentRow} className="text-emerald-700 dark:text-emerald-400 text-sm underline">
             + Add component
           </button>
         </div>
@@ -133,24 +137,24 @@ export default function Recipes() {
             {editingId ? 'Save changes' : 'Add recipe'}
           </button>
           {editingId && (
-            <button type="button" onClick={resetForm} className="border rounded px-4 py-2">
+            <button type="button" onClick={resetForm} className="border dark:border-slate-600 rounded px-4 py-2">
               Cancel
             </button>
           )}
         </div>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
       </form>
 
-      <div className="bg-white shadow rounded divide-y">
+      <div className="bg-white dark:bg-slate-800 shadow rounded divide-y dark:divide-slate-700">
         {recipes.length === 0 && (
-          <p className="p-4 text-slate-500">No recipes yet — build one from your foods above.</p>
+          <p className="p-4 text-slate-500 dark:text-slate-400">No recipes yet — build one from your foods above.</p>
         )}
         {recipes.map((recipe) => (
           <div key={recipe.id} className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{recipe.name}</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Total: {Math.round(recipe.totals.carbs_g)}g carbs · {Math.round(recipe.totals.fat_g)}g fat ·{' '}
                   {Math.round(recipe.totals.protein_g)}g protein · {Math.round(recipe.totals.calories)} kcal
                 </p>
@@ -158,20 +162,20 @@ export default function Recipes() {
               <div className="flex gap-2 text-sm">
                 <button
                   onClick={() => setExpandedId(expandedId === recipe.id ? null : recipe.id)}
-                  className="text-emerald-700 underline"
+                  className="text-emerald-700 dark:text-emerald-400 underline"
                 >
                   {expandedId === recipe.id ? 'Hide' : 'Components'}
                 </button>
-                <button onClick={() => startEdit(recipe)} className="text-slate-600 underline">
+                <button onClick={() => startEdit(recipe)} className="text-slate-600 dark:text-slate-300 underline">
                   Edit
                 </button>
-                <button onClick={() => remove(recipe.id)} className="text-red-600 underline">
+                <button onClick={() => remove(recipe.id)} className="text-red-600 dark:text-red-400 underline">
                   Delete
                 </button>
               </div>
             </div>
             {expandedId === recipe.id && (
-              <ul className="mt-2 text-sm text-slate-600 list-disc list-inside">
+              <ul className="mt-2 text-sm text-slate-600 dark:text-slate-300 list-disc list-inside">
                 {recipe.components.map((c) => (
                   <li key={c.food_id}>
                     {c.food_name} — {c.quantity_g}g ({Math.round(c.calories)} kcal)

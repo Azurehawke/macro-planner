@@ -4,8 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Macro Planner</title>
+    <script>
+      // Applied before React mounts so there's no flash of the wrong theme.
+      (function () {
+        try {
+          var theme = localStorage.getItem('macroPlanner.theme') || 'system';
+          var isDark =
+            theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {
+          // ignore (e.g. localStorage disabled) - falls back to light
+        }
+      })();
+    </script>
   </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -106,11 +106,14 @@ function buildMarkdown(date, goals, dayTotals, previewed, headingLevels) {
 function MacroGoalCard({ label, planned, goal }) {
   if (goal == null) {
     return (
-      <div className="bg-white shadow rounded p-4">
-        <h3 className="text-sm font-medium text-slate-500">{label}</h3>
+      <div className="bg-white dark:bg-slate-800 shadow rounded p-4">
+        <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</h3>
         <p className="text-2xl font-semibold mt-1">{Math.round(planned)}g</p>
-        <p className="text-xs text-slate-400 mt-1">
-          planned · <Link to="/settings" className="text-emerald-700 underline">set a goal</Link>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          planned ·{' '}
+          <Link to="/settings" className="text-emerald-700 dark:text-emerald-400 underline">
+            set a goal
+          </Link>
         </p>
       </div>
     );
@@ -120,16 +123,16 @@ function MacroGoalCard({ label, planned, goal }) {
   const over = remaining < 0;
   const pct = Math.min(100, Math.round((planned / goal) * 100));
   return (
-    <div className="bg-white shadow rounded p-4">
-      <h3 className="text-sm font-medium text-slate-500">{label}</h3>
+    <div className="bg-white dark:bg-slate-800 shadow rounded p-4">
+      <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</h3>
       <p className="text-2xl font-semibold mt-1">{Math.round(planned)}g</p>
-      <p className={`text-sm mt-1 ${over ? 'text-red-600' : 'text-emerald-700'}`}>
+      <p className={`text-sm mt-1 ${over ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
         {over ? `${Math.round(-remaining)}g over goal` : `${Math.round(remaining)}g remaining`}
       </p>
-      <div className="h-2 bg-slate-200 rounded overflow-hidden mt-2">
+      <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded overflow-hidden mt-2">
         <div className={`h-full ${over ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-xs text-slate-400 mt-1">Goal: {Math.round(goal)}g</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Goal: {Math.round(goal)}g</p>
     </div>
   );
 }
@@ -143,17 +146,17 @@ function MacroMiniStat({ label, planned, goal }) {
   const pct = goal ? Math.min(100, Math.round((planned / goal) * 100)) : 0;
   return (
     <div className="text-center">
-      <p className="text-xs text-slate-500">{label}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
       <p className="text-base font-semibold leading-tight">{Math.round(planned)}g</p>
       {goal != null ? (
         <>
-          <div className="h-1 bg-slate-200 rounded overflow-hidden mt-1">
+          <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded overflow-hidden mt-1">
             <div className={`h-full ${over ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-[10px] text-slate-400 mt-0.5">of {Math.round(goal)}g</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">of {Math.round(goal)}g</p>
         </>
       ) : (
-        <Link to="/settings" className="text-[10px] text-emerald-700 underline">
+        <Link to="/settings" className="text-[10px] text-emerald-700 dark:text-emerald-400 underline">
           set goal
         </Link>
       )}
@@ -166,10 +169,12 @@ function MacroMiniStat({ label, planned, goal }) {
 // value; local drag state is tracked by the parent so macros preview live.
 function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit }) {
   return (
-    <div className="rounded border border-slate-200 bg-slate-50 p-3 space-y-2">
+    <div className="rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium truncate">{label}</span>
-        <span className="shrink-0 text-sm font-semibold text-emerald-700">{fraction.toFixed(2)}x</span>
+        <span className="shrink-0 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+          {fraction.toFixed(2)}x
+        </span>
       </div>
       <input
         type="range"
@@ -184,11 +189,13 @@ function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit
         className="w-full accent-emerald-700"
       />
       <div className="flex items-center justify-between gap-2 flex-wrap text-sm">
-        <span className="font-semibold text-slate-900">{Math.round(quantityG)}g</span>
-        <span className="text-slate-600">
-          <span className="font-semibold text-slate-800">{Math.round(macros.carbs_g)}g</span> carbs ·{' '}
-          <span className="font-semibold text-slate-800">{Math.round(macros.fat_g)}g</span> fat ·{' '}
-          <span className="font-semibold text-slate-800">{Math.round(macros.protein_g)}g</span> protein
+        <span className="font-semibold text-slate-900 dark:text-slate-100">{Math.round(quantityG)}g</span>
+        <span className="text-slate-600 dark:text-slate-400">
+          <span className="font-semibold text-slate-800 dark:text-slate-200">{Math.round(macros.carbs_g)}g</span>{' '}
+          carbs ·{' '}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">{Math.round(macros.fat_g)}g</span> fat ·{' '}
+          <span className="font-semibold text-slate-800 dark:text-slate-200">{Math.round(macros.protein_g)}g</span>{' '}
+          protein
         </span>
       </div>
     </div>
@@ -330,7 +337,7 @@ export default function Diary() {
   return (
     <div>
       <div
-        className="sticky z-20 bg-slate-50 pb-4 space-y-6 shadow-[0_4px_6px_-4px_rgba(0,0,0,0.15)]"
+        className="sticky z-20 bg-slate-50 dark:bg-slate-900 pb-4 space-y-6 shadow-[0_4px_6px_-4px_rgba(0,0,0,0.15)]"
         style={{ top: 'var(--app-header-height, 0px)' }}
       >
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -340,14 +347,14 @@ export default function Diary() {
               <>
                 <button
                   onClick={copyMarkdown}
-                  className="border rounded px-3 py-1 text-sm hover:bg-slate-50"
+                  className="border dark:border-slate-600 rounded px-3 py-1 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                   title="Copy the plan as a markdown table"
                 >
                   {copied ? 'Copied!' : 'Copy as markdown'}
                 </button>
                 <button
                   onClick={downloadMarkdown}
-                  className="border rounded px-3 py-1 text-sm hover:bg-slate-50"
+                  className="border dark:border-slate-600 rounded px-3 py-1 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                   title="Download the plan as a .md file"
                 >
                   Download .md
@@ -358,14 +365,14 @@ export default function Diary() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="border rounded px-2 py-1"
+              className="border dark:border-slate-600 dark:bg-slate-800 rounded px-2 py-1"
             />
           </div>
         </div>
 
         {data && dayTotals && (
           <div className="space-y-2">
-            <div className="sm:hidden bg-white shadow rounded p-3 grid grid-cols-3 gap-2">
+            <div className="sm:hidden bg-white dark:bg-slate-800 shadow rounded p-3 grid grid-cols-3 gap-2">
               <MacroMiniStat label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
               <MacroMiniStat label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
               <MacroMiniStat label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
@@ -375,11 +382,13 @@ export default function Diary() {
               <MacroGoalCard label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
               <MacroGoalCard label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
             </div>
-            <p className="text-sm text-slate-500">{Math.round(dayTotals.calories)} kcal planned total</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {Math.round(dayTotals.calories)} kcal planned total
+            </p>
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="bg-white shadow rounded p-4 flex flex-wrap gap-3 items-end">
+        <form onSubmit={onSubmit} className="bg-white dark:bg-slate-800 shadow rounded p-4 flex flex-wrap gap-3 items-end">
           <div>
             <label className="block text-sm font-medium mb-1">Type</label>
             <select
@@ -388,7 +397,7 @@ export default function Diary() {
                 setItemType(e.target.value);
                 setItemId('');
               }}
-              className="border rounded px-2 py-1"
+              className="border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
             >
               <option value="food">Food</option>
               <option value="recipe">Recipe</option>
@@ -396,7 +405,12 @@ export default function Diary() {
           </div>
           <div className="flex-1 min-w-[10rem]">
             <label className="block text-sm font-medium mb-1">Item</label>
-            <select required value={itemId} onChange={(e) => setItemId(e.target.value)} className="w-full border rounded px-2 py-1">
+            <select
+              required
+              value={itemId}
+              onChange={(e) => setItemId(e.target.value)}
+              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+            >
               <option value="">Select...</option>
               {options.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -407,7 +421,11 @@ export default function Diary() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Meal</label>
-            <select value={mealSlot} onChange={(e) => setMealSlot(e.target.value)} className="border rounded px-2 py-1">
+            <select
+              value={mealSlot}
+              onChange={(e) => setMealSlot(e.target.value)}
+              className="border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+            >
               {MEAL_SLOTS.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -418,22 +436,24 @@ export default function Diary() {
           <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
             Add to plan
           </button>
-          <p className="text-xs text-slate-500 w-full">
+          <p className="text-xs text-slate-500 dark:text-slate-400 w-full">
             Adds a full serving — dial it in with the slider below once it's added.
           </p>
-          {error && <p className="text-red-600 text-sm w-full">{error}</p>}
+          {error && <p className="text-red-600 dark:text-red-400 text-sm w-full">{error}</p>}
         </form>
       </div>
 
-      <div className="bg-white shadow rounded divide-y mt-6 mb-6">
-        {data && data.entries.length === 0 && <p className="p-4 text-slate-500">Nothing planned yet.</p>}
+      <div className="bg-white dark:bg-slate-800 shadow rounded divide-y dark:divide-slate-700 mt-6 mb-6">
+        {data && data.entries.length === 0 && (
+          <p className="p-4 text-slate-500 dark:text-slate-400">Nothing planned yet.</p>
+        )}
         {previewed.map(({ entry, preview }) => (
           <div key={entry.id} className="p-4 space-y-2">
             <div className="flex items-center justify-between">
               <p className="font-medium">
-                {entry.name} <span className="text-xs text-slate-400">({entry.meal_slot})</span>
+                {entry.name} <span className="text-xs text-slate-400 dark:text-slate-500">({entry.meal_slot})</span>
               </p>
-              <button onClick={() => removeEntry(entry.id)} className="text-red-600 underline text-sm">
+              <button onClick={() => removeEntry(entry.id)} className="text-red-600 dark:text-red-400 underline text-sm">
                 Remove
               </button>
             </div>
@@ -462,7 +482,7 @@ export default function Diary() {
                     />
                   ))}
                 </div>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Subtotal: {Math.round(preview.macros.carbs_g)}g carbs · {Math.round(preview.macros.fat_g)}g fat ·{' '}
                   {Math.round(preview.macros.protein_g)}g protein · {Math.round(preview.macros.calories)} kcal
                 </p>

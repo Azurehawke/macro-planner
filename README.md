@@ -24,6 +24,9 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 - **Search online** for a food (e.g. "hamburger bun") from the Foods page —
   queries USDA FoodData Central and Open Food Facts and lets you pick a match
   to prefill the add-food form, which you can still review/edit before saving
+- **Dark mode** — a quick toggle in the nav, plus a Light/Dark/Match system
+  selector on the Settings page. Preference is remembered per browser
+  (localStorage) with no flash of the wrong theme on load
 
 ## Stack
 

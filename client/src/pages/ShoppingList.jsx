@@ -101,7 +101,7 @@ export default function ShoppingList() {
           <select
             value={activeListId || ''}
             onChange={(e) => setActiveListId(Number(e.target.value))}
-            className="border rounded px-2 py-1 min-w-0"
+            className="border dark:border-slate-600 dark:bg-slate-800 rounded px-2 py-1 min-w-0"
           >
             {lists.map((l) => (
               <option key={l.id} value={l.id}>
@@ -114,24 +114,28 @@ export default function ShoppingList() {
               placeholder="New list name"
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
-              className="border rounded px-2 py-1 text-sm w-32 min-w-0"
+              className="border dark:border-slate-600 dark:bg-slate-800 rounded px-2 py-1 text-sm w-32 min-w-0"
             />
-            <button type="submit" className="border rounded px-2 py-1 text-sm shrink-0">
+            <button type="submit" className="border dark:border-slate-600 rounded px-2 py-1 text-sm shrink-0">
               + New list
             </button>
           </form>
         </div>
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Shared with your whole household — anyone in your household sees the same list and can check
         items off.
       </p>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <form onSubmit={addRecipe} className="bg-white shadow rounded p-4 space-y-2">
+        <form onSubmit={addRecipe} className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
           <h2 className="font-medium">Add from a recipe</h2>
-          <select value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className="w-full border rounded px-2 py-1">
+          <select
+            value={recipeId}
+            onChange={(e) => setRecipeId(e.target.value)}
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+          >
             <option value="">Select recipe...</option>
             {recipes.map((r) => (
               <option key={r.id} value={r.id}>
@@ -147,7 +151,7 @@ export default function ShoppingList() {
               step="0.1"
               value={multiplier}
               onChange={(e) => setMultiplier(e.target.value)}
-              className="border rounded px-2 py-1 w-20"
+              className="border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 w-20"
             />
           </div>
           <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
@@ -155,9 +159,13 @@ export default function ShoppingList() {
           </button>
         </form>
 
-        <form onSubmit={addFood} className="bg-white shadow rounded p-4 space-y-2">
+        <form onSubmit={addFood} className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
           <h2 className="font-medium">Add a single item</h2>
-          <select value={foodId} onChange={(e) => setFoodId(e.target.value)} className="w-full border rounded px-2 py-1">
+          <select
+            value={foodId}
+            onChange={(e) => setFoodId(e.target.value)}
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+          >
             <option value="">Select food...</option>
             {foods.map((f) => (
               <option key={f.id} value={f.id}>
@@ -172,7 +180,7 @@ export default function ShoppingList() {
             placeholder="grams"
             value={foodQty}
             onChange={(e) => setFoodQty(e.target.value)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
           <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
             Add item
@@ -180,23 +188,25 @@ export default function ShoppingList() {
         </form>
       </div>
 
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
 
-      <div className="bg-white shadow rounded divide-y">
-        {list && list.items.length === 0 && <p className="p-4 text-slate-500">List is empty.</p>}
+      <div className="bg-white dark:bg-slate-800 shadow rounded divide-y dark:divide-slate-700">
+        {list && list.items.length === 0 && (
+          <p className="p-4 text-slate-500 dark:text-slate-400">List is empty.</p>
+        )}
         {list &&
           list.items.map((item) => (
             <div key={item.id} className="p-4 flex items-center justify-between">
               <label className="flex items-center gap-3">
                 <input type="checkbox" checked={item.checked} onChange={() => toggleChecked(item)} />
-                <span className={item.checked ? 'line-through text-slate-400' : ''}>
+                <span className={item.checked ? 'line-through text-slate-400 dark:text-slate-500' : ''}>
                   {item.food_name} — {Math.round(item.quantity_g)}g
                   {item.source_recipe_name && (
-                    <span className="text-xs text-slate-400"> (for {item.source_recipe_name})</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500"> (for {item.source_recipe_name})</span>
                   )}
                 </span>
               </label>
-              <button onClick={() => removeItem(item)} className="text-red-600 underline text-sm">
+              <button onClick={() => removeItem(item)} className="text-red-600 dark:text-red-400 underline text-sm">
                 Remove
               </button>
             </div>
