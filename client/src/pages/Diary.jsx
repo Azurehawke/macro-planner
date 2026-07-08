@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { loadHeadingLevels } from '../utils/markdownHeadingLevels.js';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -44,22 +45,19 @@ function macroLine(macros) {
   )}g protein, ${Math.round(macros.calories)} kcal`;
 }
 
-const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];
-const DEFAULT_HEADING_LEVELS = { title: 1, section: 2 };
-
 function heading(level, text) {
   return `${'#'.repeat(level)} ${text}`;
 }
 
 // Renders the currently-displayed plan (including any un-committed slider
 // drags, so what you see is exactly what gets exported) as a markdown file.
-// `headingLevels` controls how deep the title ("Daily Plan — ...") and each
-// section heading ("Macro Totals", meal names) nest, e.g. to fit under an
-// existing H1/H2 in a bigger notes document.
+// `headingLevels` (edited on the Settings page) controls how deep the title
+// and each section heading ("Macro Totals", meal names) nest, e.g. to fit
+// under an existing H1/H2 in a bigger notes document.
 function buildMarkdown(date, goals, dayTotals, previewed, headingLevels) {
   const { title, section } = headingLevels;
   const lines = [
-    heading(title, `Daily Plan — ${date}`),
+    heading(title, `Meal Plan - ${date.replaceAll('-', '')}`),
     '',
     heading(section, 'Macro Totals'),
     '',
@@ -208,21 +206,6 @@ export default function Diary() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Markdown export heading levels, remembered across visits.
-  const [headingLevels, setHeadingLevels] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('macroPlanner.markdownHeadingLevels'));
-      if (saved && HEADING_LEVELS.includes(saved.title) && HEADING_LEVELS.includes(saved.section)) return saved;
-    } catch {
-      // ignore malformed/absent saved value, fall back to defaults below
-    }
-    return DEFAULT_HEADING_LEVELS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('macroPlanner.markdownHeadingLevels', JSON.stringify(headingLevels));
-  }, [headingLevels]);
-
   // Local, optimistic fraction overrides so dragging a slider feels instant.
   // Keyed by entry id for food entries, `${entryId}:${foodId}` for components.
   const [localFractions, setLocalFractions] = useState({});
@@ -308,6 +291,9 @@ export default function Diary() {
 
   const previewed = data ? data.entries.map((e) => ({ entry: e, preview: previewEntry(e) })) : [];
   const dayTotals = data ? sumMacros(previewed.map((p) => p.preview.macros)) : null;
+  // Read fresh each render so a change made on the Settings page (even in
+  // another tab) takes effect the next time this page re-renders.
+  const headingLevels = loadHeadingLevels();
 
   const downloadMarkdown = () => {
     const markdown = buildMarkdown(date, data.goals, dayTotals, previewed, headingLevels);
@@ -366,34 +352,6 @@ export default function Diary() {
                 >
                   Download .md
                 </button>
-                <label className="flex items-center gap-1 text-xs text-slate-500">
-                  Title
-                  <select
-                    value={headingLevels.title}
-                    onChange={(e) => setHeadingLevels((prev) => ({ ...prev, title: Number(e.target.value) }))}
-                    className="border rounded px-1 py-1"
-                  >
-                    {HEADING_LEVELS.map((l) => (
-                      <option key={l} value={l}>
-                        H{l}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-center gap-1 text-xs text-slate-500">
-                  Sections
-                  <select
-                    value={headingLevels.section}
-                    onChange={(e) => setHeadingLevels((prev) => ({ ...prev, section: Number(e.target.value) }))}
-                    className="border rounded px-1 py-1"
-                  >
-                    {HEADING_LEVELS.map((l) => (
-                      <option key={l} value={l}>
-                        H{l}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               </>
             )}
             <input
