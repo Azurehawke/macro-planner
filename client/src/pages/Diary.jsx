@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { loadHeadingLevels } from '../utils/markdownHeadingLevels.js';
 
+// Local date, not UTC: toISOString() converts to UTC first, which rolls
+// over to "tomorrow" every evening for anyone west of UTC (i.e. most of
+// the US) while it's still today on their clock.
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
