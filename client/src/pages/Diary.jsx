@@ -44,10 +44,28 @@ function macroLine(macros) {
   )}g protein, ${Math.round(macros.calories)} kcal`;
 }
 
+const HEADING_LEVELS = [1, 2, 3, 4, 5, 6];
+const DEFAULT_HEADING_LEVELS = { title: 1, section: 2 };
+
+function heading(level, text) {
+  return `${'#'.repeat(level)} ${text}`;
+}
+
 // Renders the currently-displayed plan (including any un-committed slider
 // drags, so what you see is exactly what gets exported) as a markdown file.
-function buildMarkdown(date, goals, dayTotals, previewed) {
-  const lines = [`# Daily Plan — ${date}`, '', '## Macro Totals', '', '| Macro | Planned | Goal | Remaining |', '|---|---|---|---|'];
+// `headingLevels` controls how deep the title ("Daily Plan — ...") and each
+// section heading ("Macro Totals", meal names) nest, e.g. to fit under an
+// existing H1/H2 in a bigger notes document.
+function buildMarkdown(date, goals, dayTotals, previewed, headingLevels) {
+  const { title, section } = headingLevels;
+  const lines = [
+    heading(title, `Daily Plan — ${date}`),
+    '',
+    heading(section, 'Macro Totals'),
+    '',
+    '| Macro | Planned | Goal | Remaining |',
+    '|---|---|---|---|',
+  ];
   lines.push(macroTableRow('Carbs', dayTotals.carbs_g, goals.carbs_g));
   lines.push(macroTableRow('Fat', dayTotals.fat_g, goals.fat_g));
   lines.push(macroTableRow('Protein', dayTotals.protein_g, goals.protein_g));
@@ -62,7 +80,7 @@ function buildMarkdown(date, goals, dayTotals, previewed) {
 
   for (const [slot, items] of byMealSlot) {
     if (items.length === 0) continue;
-    lines.push(`## ${slot.charAt(0).toUpperCase()}${slot.slice(1)}`, '');
+    lines.push(heading(section, `${slot.charAt(0).toUpperCase()}${slot.slice(1)}`), '');
     for (const { entry, preview } of items) {
       if (entry.item_type === 'food') {
         lines.push(`- ${entry.name} — ${Math.round(preview.quantity_g)}g (${macroLine(preview.macros)})`);
@@ -190,6 +208,21 @@ export default function Diary() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Markdown export heading levels, remembered across visits.
+  const [headingLevels, setHeadingLevels] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('macroPlanner.markdownHeadingLevels'));
+      if (saved && HEADING_LEVELS.includes(saved.title) && HEADING_LEVELS.includes(saved.section)) return saved;
+    } catch {
+      // ignore malformed/absent saved value, fall back to defaults below
+    }
+    return DEFAULT_HEADING_LEVELS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('macroPlanner.markdownHeadingLevels', JSON.stringify(headingLevels));
+  }, [headingLevels]);
+
   // Local, optimistic fraction overrides so dragging a slider feels instant.
   // Keyed by entry id for food entries, `${entryId}:${foodId}` for components.
   const [localFractions, setLocalFractions] = useState({});
@@ -277,7 +310,7 @@ export default function Diary() {
   const dayTotals = data ? sumMacros(previewed.map((p) => p.preview.macros)) : null;
 
   const downloadMarkdown = () => {
-    const markdown = buildMarkdown(date, data.goals, dayTotals, previewed);
+    const markdown = buildMarkdown(date, data.goals, dayTotals, previewed, headingLevels);
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -290,7 +323,7 @@ export default function Diary() {
   };
 
   const copyMarkdown = async () => {
-    const markdown = buildMarkdown(date, data.goals, dayTotals, previewed);
+    const markdown = buildMarkdown(date, data.goals, dayTotals, previewed, headingLevels);
     try {
       await navigator.clipboard.writeText(markdown);
     } catch {
@@ -333,6 +366,34 @@ export default function Diary() {
                 >
                   Download .md
                 </button>
+                <label className="flex items-center gap-1 text-xs text-slate-500">
+                  Title
+                  <select
+                    value={headingLevels.title}
+                    onChange={(e) => setHeadingLevels((prev) => ({ ...prev, title: Number(e.target.value) }))}
+                    className="border rounded px-1 py-1"
+                  >
+                    {HEADING_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        H{l}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-1 text-xs text-slate-500">
+                  Sections
+                  <select
+                    value={headingLevels.section}
+                    onChange={(e) => setHeadingLevels((prev) => ({ ...prev, section: Number(e.target.value) }))}
+                    className="border rounded px-1 py-1"
+                  >
+                    {HEADING_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        H{l}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </>
             )}
             <input
