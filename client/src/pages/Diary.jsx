@@ -107,18 +107,34 @@ function buildMarkdown(date, goals, dayTotals, previewed, headingLevels) {
   return lines.join('\n');
 }
 
+// Background per macro plus a darker (same hue/saturation, ~18% lightness)
+// variant for its text, computed so all three stay readable (>=4.5:1
+// contrast against their own background).
+const MACRO_CARD_COLORS = {
+  Carbs: { bg: '#D099FF', text: '#31005C' },
+  Fat: { bg: '#FF8C80', text: '#5C0900' },
+  Protein: { bg: '#F7B500', text: '#5C4300' },
+};
+
 // One card per macro: how much is planned so far today, and how much of the
-// goal (set on the Settings page) is left. Goes red/over instead of just
-// capping at 100% so overshooting the plan is obvious.
+// goal (set on the Settings page) is left. The "over goal" wording (rather
+// than a color swap) is what flags overshooting, since the card's colors are
+// fixed per macro.
 function MacroGoalCard({ label, planned, goal }) {
+  const { bg, text } = MACRO_CARD_COLORS[label];
+
   if (goal == null) {
     return (
-      <div className="bg-white dark:bg-slate-800 shadow rounded p-4">
-        <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</h3>
-        <p className="text-2xl font-semibold mt-1">{Math.round(planned)}g</p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+      <div className="rounded shadow p-3" style={{ backgroundColor: bg }}>
+        <h3 className="text-sm font-medium" style={{ color: text }}>
+          {label}
+        </h3>
+        <p className="text-2xl font-semibold mt-0.5" style={{ color: text }}>
+          {Math.round(planned)}g
+        </p>
+        <p className="text-xs mt-1" style={{ color: text, opacity: 0.8 }}>
           planned ·{' '}
-          <Link to="/settings" className="text-emerald-700 dark:text-emerald-400 underline">
+          <Link to="/settings" className="underline" style={{ color: text }}>
             set a goal
           </Link>
         </p>
@@ -130,16 +146,22 @@ function MacroGoalCard({ label, planned, goal }) {
   const over = remaining < 0;
   const pct = Math.min(100, Math.round((planned / goal) * 100));
   return (
-    <div className="bg-white dark:bg-slate-800 shadow rounded p-4">
-      <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</h3>
-      <p className="text-2xl font-semibold mt-1">{Math.round(planned)}g</p>
-      <p className={`text-sm mt-1 ${over ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+    <div className="rounded shadow p-3" style={{ backgroundColor: bg }}>
+      <h3 className="text-sm font-medium" style={{ color: text }}>
+        {label}
+      </h3>
+      <p className="text-2xl font-semibold mt-0.5" style={{ color: text }}>
+        {Math.round(planned)}g
+      </p>
+      <p className="text-sm mt-0.5 font-medium" style={{ color: text }}>
         {over ? `${Math.round(-remaining)}g over goal` : `${Math.round(remaining)}g remaining`}
       </p>
-      <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded overflow-hidden mt-2">
-        <div className={`h-full ${over ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+      <div className="h-1.5 rounded overflow-hidden mt-1.5" style={{ backgroundColor: 'rgba(0,0,0,0.12)' }}>
+        <div className="h-full" style={{ width: `${pct}%`, backgroundColor: text, opacity: over ? 1 : 0.55 }} />
       </div>
-      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Goal: {Math.round(goal)}g</p>
+      <p className="text-xs mt-1" style={{ color: text, opacity: 0.75 }}>
+        Goal: {Math.round(goal)}g
+      </p>
     </div>
   );
 }
@@ -148,22 +170,29 @@ function MacroGoalCard({ label, planned, goal }) {
 // stacked vertically eat too much of the (sticky) header's height. All
 // three render side by side in one short row instead.
 function MacroMiniStat({ label, planned, goal }) {
+  const { bg, text } = MACRO_CARD_COLORS[label];
   const remaining = goal != null ? goal - planned : null;
   const over = remaining != null && remaining < 0;
   const pct = goal ? Math.min(100, Math.round((planned / goal) * 100)) : 0;
   return (
-    <div className="text-center">
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="text-base font-semibold leading-tight">{Math.round(planned)}g</p>
+    <div className="text-center rounded shadow p-2" style={{ backgroundColor: bg }}>
+      <p className="text-xs font-medium" style={{ color: text }}>
+        {label}
+      </p>
+      <p className="text-base font-semibold leading-tight" style={{ color: text }}>
+        {Math.round(planned)}g
+      </p>
       {goal != null ? (
         <>
-          <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded overflow-hidden mt-1">
-            <div className={`h-full ${over ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+          <div className="h-1 rounded overflow-hidden mt-1" style={{ backgroundColor: 'rgba(0,0,0,0.12)' }}>
+            <div className="h-full" style={{ width: `${pct}%`, backgroundColor: text, opacity: over ? 1 : 0.55 }} />
           </div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">of {Math.round(goal)}g</p>
+          <p className="text-[10px] mt-0.5" style={{ color: text, opacity: 0.75 }}>
+            of {Math.round(goal)}g
+          </p>
         </>
       ) : (
-        <Link to="/settings" className="text-[10px] text-emerald-700 dark:text-emerald-400 underline">
+        <Link to="/settings" className="text-[10px] underline" style={{ color: text }}>
           set goal
         </Link>
       )}
@@ -379,12 +408,12 @@ export default function Diary() {
 
         {data && dayTotals && (
           <div className="space-y-2">
-            <div className="sm:hidden bg-white dark:bg-slate-800 shadow rounded p-3 grid grid-cols-3 gap-2">
+            <div className="sm:hidden grid grid-cols-3 gap-2">
               <MacroMiniStat label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
               <MacroMiniStat label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
               <MacroMiniStat label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
             </div>
-            <div className="hidden sm:grid sm:grid-cols-3 gap-4">
+            <div className="hidden sm:grid sm:grid-cols-3 gap-3">
               <MacroGoalCard label="Carbs" planned={dayTotals.carbs_g} goal={data.goals.carbs_g} />
               <MacroGoalCard label="Fat" planned={dayTotals.fat_g} goal={data.goals.fat_g} />
               <MacroGoalCard label="Protein" planned={dayTotals.protein_g} goal={data.goals.protein_g} />
