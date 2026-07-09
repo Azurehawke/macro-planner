@@ -4,7 +4,11 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 
 ## Features
 
-- Multi-user accounts, grouped into **households** via an invite code
+- Multi-user accounts, grouped into **households** via an invite code.
+  Starting a brand-new household seeds it with a small set of **sample foods
+  and recipes** so there's something to explore right away (joining an
+  existing household via invite code skips this, since it already has real
+  data)
 - A shared **foods** database (macros per gram, entered from scratch)
 - **Recipes** built from foods (or other components), with total macros computed
   live from the ingredients — editing a food's macros immediately updates every
@@ -56,6 +60,10 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 - **Dark mode** — a quick toggle in the nav, plus a Light/Dark/Match system
   selector on the Settings page. Preference is remembered per browser
   (localStorage) with no flash of the wrong theme on load
+- A first-visit **walkthrough** covering foods, recipes, the weekly plan,
+  copying days/weeks, the shopping list, and goals — shown automatically the
+  first time a browser opens the app, and reopenable anytime from the "?"
+  button in the nav
 
 ## Stack
 

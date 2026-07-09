@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { seedSampleData } = require('../services/sampleData');
 
 const router = express.Router();
 
@@ -53,6 +54,7 @@ router.post('/register', async (req, res) => {
     await client.query('BEGIN');
 
     let householdId = null;
+    let isNewHousehold = false;
     if (householdMode === 'join') {
       if (!inviteCode) throw Object.assign(new Error('Invite code is required'), { status: 400 });
       const { rows } = await client.query(
@@ -70,6 +72,7 @@ router.post('/register', async (req, res) => {
         [name2, generateInviteCode()]
       );
       householdId = rows[0].id;
+      isNewHousehold = true;
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -79,6 +82,12 @@ router.post('/register', async (req, res) => {
        RETURNING id, email, name, household_id, daily_carbs_goal_g, daily_fat_goal_g, daily_protein_goal_g`,
       [email.toLowerCase().trim(), passwordHash, name.trim(), householdId]
     );
+
+    // Only a brand-new household gets sample data - joining an existing one
+    // means there's already whatever its members have built.
+    if (isNewHousehold) {
+      await seedSampleData(client, householdId, userRows[0].id);
+    }
 
     await client.query('COMMIT');
 

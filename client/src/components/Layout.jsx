@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
+import OnboardingModal from './OnboardingModal.jsx';
+import { hasCompletedOnboarding, markOnboardingComplete } from '../utils/onboarding.js';
 
 const navItems = [
   { to: '/plan', label: 'Week' },
@@ -46,9 +48,22 @@ function ThemeToggleButton({ className }) {
   );
 }
 
+function HelpButton({ className, onClick }) {
+  return (
+    <button onClick={onClick} aria-label="How to use Macro Planner" title="How to use Macro Planner" className={className}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <path strokeLinecap="round" d="M9.5 9a2.5 2.5 0 1 1 3.4 2.33c-.77.3-1.4.94-1.4 1.67v.5" />
+        <circle cx="12" cy="17" r="0.75" fill="currentColor" stroke="none" />
+      </svg>
+    </button>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const location = useLocation();
   const headerRef = useRef(null);
 
@@ -56,6 +71,17 @@ export default function Layout() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location]);
+
+  // First visit on this browser: show the walkthrough automatically. It can
+  // always be reopened later via the "?" button.
+  useEffect(() => {
+    if (!hasCompletedOnboarding()) setShowOnboarding(true);
+  }, []);
+
+  const closeOnboarding = () => {
+    markOnboardingComplete();
+    setShowOnboarding(false);
+  };
 
   // Exposes the nav bar's real rendered height as a CSS variable, so pages
   // (e.g. Daily Plan) can stick their own sticky headers exactly below it
@@ -88,6 +114,7 @@ export default function Layout() {
 
           <div className="hidden sm:flex items-center gap-3 text-sm">
             <span>{user?.name}</span>
+            <HelpButton className="p-1.5 rounded hover:bg-emerald-800" onClick={() => setShowOnboarding(true)} />
             <ThemeToggleButton className="p-1.5 rounded hover:bg-emerald-800" />
             <button onClick={logout} className="bg-emerald-900 px-3 py-1 rounded hover:bg-emerald-800">
               Log out
@@ -120,6 +147,7 @@ export default function Layout() {
             <div className="flex items-center justify-between border-t border-emerald-600 mt-2 pt-3">
               <span>{user?.name}</span>
               <div className="flex items-center gap-2">
+                <HelpButton className="p-1.5 rounded hover:bg-emerald-800" onClick={() => setShowOnboarding(true)} />
                 <ThemeToggleButton className="p-1.5 rounded hover:bg-emerald-800" />
                 <button onClick={logout} className="bg-emerald-900 px-3 py-1 rounded hover:bg-emerald-800">
                   Log out
@@ -132,6 +160,7 @@ export default function Layout() {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
         <Outlet />
       </main>
+      {showOnboarding && <OnboardingModal onClose={closeOnboarding} />}
     </div>
   );
 }
