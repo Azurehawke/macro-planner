@@ -1,7 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
+import { csvToObjects, downloadCsv } from '../utils/csv.js';
 
 const emptyForm = { name: '', base_quantity_g: 100, carbs_g: '', fat_g: '', protein_g: '' };
+
+const FOODS_TEMPLATE_HEADER = ['name', 'base_quantity_g', 'carbs_g', 'fat_g', 'protein_g'];
+const FOODS_TEMPLATE_ROWS = [
+  ['Chicken Breast', '100', '0', '3.6', '31'],
+  ['Rolled Oats', '100', '66', '7', '17'],
+];
 
 const SOURCE_LABELS = {
   usda: 'USDA FoodData Central',
@@ -23,6 +30,11 @@ export default function Foods() {
   const [searchError, setSearchError] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const searchBoxRef = useRef(null);
+
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Close the results dropdown on an outside click, so it overlays the rest
   // of the page (foods list, add-food form) instead of shifting it around.
@@ -117,6 +129,41 @@ export default function Foods() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const downloadTemplate = () => {
+    downloadCsv('foods_template.csv', FOODS_TEMPLATE_HEADER, FOODS_TEMPLATE_ROWS);
+  };
+
+  const onImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setImportError('');
+    setImportResult(null);
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const rows = csvToObjects(text);
+      if (rows.length === 0) {
+        throw new Error('That CSV has no data rows to import.');
+      }
+      const foods = rows.map((r) => ({
+        name: r.name,
+        base_quantity_g: r.base_quantity_g,
+        carbs_g: r.carbs_g,
+        fat_g: r.fat_g,
+        protein_g: r.protein_g,
+      }));
+      const result = await api.post('/foods/import', { foods });
+      setImportResult(result);
+      await load();
+    } catch (err) {
+      setImportError(err.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const toggleUsedIn = async (food) => {
     if (expandedId === food.id) {
       setExpandedId(null);
@@ -132,6 +179,52 @@ export default function Foods() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Foods</h1>
+
+      <div className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
+        <h2 className="font-medium">Import from CSV</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800 disabled:opacity-50"
+          >
+            {importing ? 'Importing...' : 'Import CSV'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={onImportFile}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="text-emerald-700 dark:text-emerald-400 underline text-sm"
+          >
+            Download CSV template
+          </button>
+        </div>
+        {importError && <p className="text-red-600 dark:text-red-400 text-sm">{importError}</p>}
+        {importResult && (
+          <div className="text-sm">
+            <p className="text-emerald-700 dark:text-emerald-400">
+              Imported: {importResult.created} added, {importResult.updated} updated
+              {importResult.errors.length > 0 && `, ${importResult.errors.length} skipped`}.
+            </p>
+            {importResult.errors.length > 0 && (
+              <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1">
+                {importResult.errors.map((e, i) => (
+                  <li key={i}>
+                    Row {e.row} ({e.name}): {e.error}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
 
       <div ref={searchBoxRef} className="relative bg-white dark:bg-slate-800 shadow rounded p-4 space-y-3">
         <h2 className="font-medium">Search online</h2>

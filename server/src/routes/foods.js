@@ -50,6 +50,71 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Bulk import from a client-parsed CSV. Upserts by (household_id, name) - a
+// second import of an edited template updates existing foods rather than
+// erroring on the duplicate-name constraint. Each row is inserted in its own
+// query so one bad row doesn't block the rest of the batch.
+router.post('/import', async (req, res) => {
+  const { foods } = req.body || {};
+  if (!Array.isArray(foods) || foods.length === 0) {
+    return res.status(400).json({ error: 'foods must be a non-empty array' });
+  }
+
+  let created = 0;
+  let updated = 0;
+  const errors = [];
+
+  for (let i = 0; i < foods.length; i++) {
+    const row = foods[i] || {};
+    const name = (row.name || '').toString().trim();
+    const base_quantity_g = Number(row.base_quantity_g) || 100;
+    // Number('') is 0, not NaN, so a blank required cell must be rejected by
+    // checking the raw string first - otherwise a missing macro silently
+    // imports as a zero instead of surfacing as a row error.
+    const carbsRaw = (row.carbs_g ?? '').toString().trim();
+    const fatRaw = (row.fat_g ?? '').toString().trim();
+    const proteinRaw = (row.protein_g ?? '').toString().trim();
+    const carbs_g = Number(carbsRaw);
+    const fat_g = Number(fatRaw);
+    const protein_g = Number(proteinRaw);
+
+    if (
+      !name ||
+      carbsRaw === '' ||
+      fatRaw === '' ||
+      proteinRaw === '' ||
+      !Number.isFinite(carbs_g) ||
+      !Number.isFinite(fat_g) ||
+      !Number.isFinite(protein_g)
+    ) {
+      errors.push({
+        row: i + 1,
+        name: name || '(blank)',
+        error: 'name, carbs_g, fat_g and protein_g are required numbers',
+      });
+      continue;
+    }
+
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO foods (household_id, name, base_quantity_g, carbs_g, fat_g, protein_g, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (household_id, name)
+         DO UPDATE SET base_quantity_g = EXCLUDED.base_quantity_g, carbs_g = EXCLUDED.carbs_g,
+                       fat_g = EXCLUDED.fat_g, protein_g = EXCLUDED.protein_g
+         RETURNING (xmax = 0) AS inserted`,
+        [req.user.household_id, name, base_quantity_g, carbs_g, fat_g, protein_g, req.user.id]
+      );
+      if (rows[0].inserted) created++;
+      else updated++;
+    } catch (err) {
+      errors.push({ row: i + 1, name, error: err.message });
+    }
+  }
+
+  res.json({ created, updated, errors });
+});
+
 router.get('/:id', async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM foods WHERE id = $1 AND household_id = $2', [
     req.params.id,

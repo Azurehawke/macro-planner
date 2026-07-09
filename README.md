@@ -38,6 +38,15 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 - **Search online** for a food (e.g. "hamburger bun") from the Foods page —
   queries USDA FoodData Central and Open Food Facts and lets you pick a match
   to prefill the add-food form, which you can still review/edit before saving
+- **Import from CSV** on both the Foods and Recipes pages, each with a
+  "Download CSV template" link so you know the exact columns expected.
+  Foods import upserts by name (re-importing an edited file updates existing
+  foods instead of erroring on the duplicate). Recipes import uses a "long"
+  CSV — one row per ingredient, with the recipe name repeated for each of its
+  components — and resolves each `food_name` against your household's
+  existing foods, so import your foods CSV first. Bad rows/recipes are
+  skipped individually with a reason shown, without blocking the rest of the
+  batch
 - **Dark mode** — a quick toggle in the nav, plus a Light/Dark/Match system
   selector on the Settings page. Preference is remembered per browser
   (localStorage) with no flash of the wrong theme on load

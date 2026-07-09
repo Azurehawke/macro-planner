@@ -99,6 +99,93 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Bulk import from a client-parsed CSV. The CSV is "long" format - one row
+// per (recipe, food, quantity) - so the client groups rows by recipe name
+// before posting here as { name, components: [{ food_name, quantity_g }] }.
+// Each recipe is upserted by (household_id, name) in its own transaction, so
+// one recipe with an unresolvable food name doesn't block the rest of the
+// batch. food_name is matched case-insensitively against existing foods -
+// foods must already exist (import foods first).
+router.post('/import', async (req, res) => {
+  const { recipes } = req.body || {};
+  if (!Array.isArray(recipes) || recipes.length === 0) {
+    return res.status(400).json({ error: 'recipes must be a non-empty array' });
+  }
+
+  let created = 0;
+  let updated = 0;
+  const errors = [];
+
+  for (const recipe of recipes) {
+    const name = (recipe.name || '').toString().trim();
+    const componentRows = Array.isArray(recipe.components) ? recipe.components : [];
+    if (!name || componentRows.length === 0) {
+      errors.push({ name: name || '(blank)', error: 'A recipe needs a name and at least one component row' });
+      continue;
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const resolvedComponents = [];
+      for (const c of componentRows) {
+        const foodName = (c.food_name || '').toString().trim();
+        const quantity_g = Number(c.quantity_g);
+        if (!foodName || !Number.isFinite(quantity_g) || quantity_g <= 0) {
+          throw Object.assign(
+            new Error(`Invalid component "${foodName || '(blank)'}" - needs a food_name and a positive quantity_g`),
+            { status: 400 }
+          );
+        }
+        const { rows: foodRows } = await client.query(
+          'SELECT id FROM foods WHERE household_id = $1 AND lower(name) = lower($2)',
+          [req.user.household_id, foodName]
+        );
+        if (foodRows.length === 0) {
+          throw Object.assign(new Error(`Food "${foodName}" not found - import it first`), { status: 400 });
+        }
+        resolvedComponents.push({ food_id: foodRows[0].id, quantity_g });
+      }
+
+      const { rows: existingRows } = await client.query(
+        'SELECT id FROM recipes WHERE household_id = $1 AND name = $2',
+        [req.user.household_id, name]
+      );
+
+      let recipeId;
+      if (existingRows.length > 0) {
+        recipeId = existingRows[0].id;
+        await client.query('DELETE FROM recipe_components WHERE recipe_id = $1', [recipeId]);
+        updated++;
+      } else {
+        const { rows: inserted } = await client.query(
+          'INSERT INTO recipes (household_id, name, created_by) VALUES ($1, $2, $3) RETURNING id',
+          [req.user.household_id, name, req.user.id]
+        );
+        recipeId = inserted[0].id;
+        created++;
+      }
+
+      for (const c of resolvedComponents) {
+        await client.query(
+          'INSERT INTO recipe_components (recipe_id, food_id, quantity_g) VALUES ($1, $2, $3)',
+          [recipeId, c.food_id, c.quantity_g]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      errors.push({ name, error: err.message });
+    } finally {
+      client.release();
+    }
+  }
+
+  res.json({ created, updated, errors });
+});
+
 router.get('/:id', async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM recipes WHERE id = $1 AND household_id = $2', [
     req.params.id,

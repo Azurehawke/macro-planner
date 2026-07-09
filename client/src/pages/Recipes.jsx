@@ -1,8 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
+import { csvToObjects, downloadCsv } from '../utils/csv.js';
 
 function emptyComponent() {
   return { food_id: '', quantity_g: '' };
+}
+
+const RECIPES_TEMPLATE_HEADER = ['recipe_name', 'food_name', 'quantity_g'];
+const RECIPES_TEMPLATE_ROWS = [
+  ['Oatmeal Bowl', 'Rolled Oats', '80'],
+  ['Oatmeal Bowl', 'Banana', '120'],
+  ['Chicken Bowl', 'Chicken Breast', '150'],
+  ['Chicken Bowl', 'White Rice', '200'],
+];
+
+// Groups the CSV's "long" rows (one row per recipe/food/quantity) into the
+// { name, components: [...] } shape the import endpoint expects.
+function groupRowsByRecipe(rows) {
+  const byName = new Map();
+  for (const row of rows) {
+    const name = (row.recipe_name || '').trim();
+    if (!name) continue;
+    if (!byName.has(name)) byName.set(name, []);
+    byName.get(name).push({ food_name: row.food_name, quantity_g: row.quantity_g });
+  }
+  return Array.from(byName, ([name, components]) => ({ name, components }));
 }
 
 export default function Recipes() {
@@ -13,6 +35,11 @@ export default function Recipes() {
   const [editingId, setEditingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [error, setError] = useState('');
+
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   const load = async () => {
     const [{ recipes }, { foods }] = await Promise.all([api.get('/recipes'), api.get('/foods')]);
@@ -74,9 +101,88 @@ export default function Recipes() {
     await load();
   };
 
+  const downloadTemplate = () => {
+    downloadCsv('recipes_template.csv', RECIPES_TEMPLATE_HEADER, RECIPES_TEMPLATE_ROWS);
+  };
+
+  const onImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setImportError('');
+    setImportResult(null);
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const rows = csvToObjects(text);
+      const recipes = groupRowsByRecipe(rows);
+      if (recipes.length === 0) {
+        throw new Error('That CSV has no rows with a recipe_name to import.');
+      }
+      const result = await api.post('/recipes/import', { recipes });
+      setImportResult(result);
+      await load();
+    } catch (err) {
+      setImportError(err.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Recipes</h1>
+
+      <div className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
+        <h2 className="font-medium">Import from CSV</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          One row per ingredient — repeat the recipe name for each of its components. Food names must
+          already exist on the Foods page (import foods first).
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800 disabled:opacity-50"
+          >
+            {importing ? 'Importing...' : 'Import CSV'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={onImportFile}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="text-emerald-700 dark:text-emerald-400 underline text-sm"
+          >
+            Download CSV template
+          </button>
+        </div>
+        {importError && <p className="text-red-600 dark:text-red-400 text-sm">{importError}</p>}
+        {importResult && (
+          <div className="text-sm">
+            <p className="text-emerald-700 dark:text-emerald-400">
+              Imported: {importResult.created} added, {importResult.updated} updated
+              {importResult.errors.length > 0 && `, ${importResult.errors.length} skipped`}.
+            </p>
+            {importResult.errors.length > 0 && (
+              <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1">
+                {importResult.errors.map((e, i) => (
+                  <li key={i}>
+                    {e.name}: {e.error}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
 
       <form onSubmit={onSubmit} className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-3">
         <div>
