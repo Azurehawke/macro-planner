@@ -1,18 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { loadHeadingLevels } from '../utils/markdownHeadingLevels.js';
-
-// Local date, not UTC: toISOString() converts to UTC first, which rolls
-// over to "tomorrow" every evening for anyone west of UTC (i.e. most of
-// the US) while it's still today on their clock.
-function todayISO() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+import { addDays, dayOfWeekLabel, formatShortDate, todayISO } from '../utils/date.js';
 
 const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 const MAX_FRACTION = 3;
@@ -238,8 +228,10 @@ function FractionSlider({ label, fraction, quantityG, macros, onChange, onCommit
   );
 }
 
-export default function Diary() {
-  const [date, setDate] = useState(todayISO());
+export default function DayView() {
+  const { date: routeDate } = useParams();
+  const navigate = useNavigate();
+  const date = routeDate || todayISO();
   const [data, setData] = useState(null);
   const [foods, setFoods] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -370,6 +362,8 @@ export default function Diary() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const goToDate = (newDate) => navigate(`/plan/${newDate}`);
+
   return (
     <div>
       <div
@@ -377,7 +371,18 @@ export default function Diary() {
         style={{ top: 'var(--app-header-height, 0px)' }}
       >
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-xl font-semibold">Daily Plan</h1>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/plan"
+              className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline"
+              title="Back to the week grid"
+            >
+              ‹ Week
+            </Link>
+            <h1 className="text-xl font-semibold">
+              {dayOfWeekLabel(date)}, {formatShortDate(date)}
+            </h1>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {data && (
               <>
@@ -397,12 +402,28 @@ export default function Diary() {
                 </button>
               </>
             )}
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="border dark:border-slate-600 dark:bg-slate-800 rounded px-2 py-1"
-            />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => goToDate(addDays(date, -1))}
+                className="border dark:border-slate-600 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
+                aria-label="Previous day"
+              >
+                ‹
+              </button>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => goToDate(e.target.value)}
+                className="border dark:border-slate-600 dark:bg-slate-800 rounded px-2 py-1"
+              />
+              <button
+                onClick={() => goToDate(addDays(date, 1))}
+                className="border dark:border-slate-600 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
+                aria-label="Next day"
+              >
+                ›
+              </button>
+            </div>
           </div>
         </div>
 

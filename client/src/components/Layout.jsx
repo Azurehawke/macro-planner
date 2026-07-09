@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 
 const navItems = [
-  { to: '/diary', label: 'Daily Plan' },
+  { to: '/plan', label: 'Week' },
   { to: '/foods', label: 'Foods' },
   { to: '/recipes', label: 'Recipes' },
   { to: '/shopping-list', label: 'Shopping List' },
   { to: '/household', label: 'Household' },
+  { to: '/macro-calculator', label: 'Calculator' },
   { to: '/settings', label: 'Settings' },
 ];
 
@@ -74,7 +75,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <header ref={headerRef} className="sticky top-0 z-30 bg-emerald-700 text-white">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <span className="font-semibold text-lg">Macro Planner</span>
 
           <nav className="hidden sm:flex gap-4 text-sm">
@@ -128,7 +129,7 @@ export default function Layout() {
           </div>
         )}
       </header>
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
         <Outlet />
       </main>
     </div>

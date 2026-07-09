@@ -16,7 +16,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate('/diary');
+      navigate('/plan');
     } catch (err) {
       setError(err.message);
     } finally {

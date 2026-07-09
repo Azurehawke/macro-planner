@@ -20,7 +20,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register({ name, email, password, householdMode, householdName, inviteCode });
-      navigate('/diary');
+      navigate('/plan');
     } catch (err) {
       setError(err.message);
     } finally {

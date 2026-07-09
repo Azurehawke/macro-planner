@@ -4,12 +4,14 @@ import { useAuth } from './context/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import Diary from './pages/Diary.jsx';
+import WeekPlanner from './pages/WeekPlanner.jsx';
+import DayView from './pages/DayView.jsx';
 import Foods from './pages/Foods.jsx';
 import Recipes from './pages/Recipes.jsx';
 import ShoppingList from './pages/ShoppingList.jsx';
 import Household from './pages/Household.jsx';
 import Settings from './pages/Settings.jsx';
+import MacroCalculator from './pages/MacroCalculator.jsx';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -30,13 +32,15 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route path="/diary" element={<Diary />} />
+        <Route path="/plan" element={<WeekPlanner />} />
+        <Route path="/plan/:date" element={<DayView />} />
         <Route path="/foods" element={<Foods />} />
         <Route path="/recipes" element={<Recipes />} />
         <Route path="/shopping-list" element={<ShoppingList />} />
         <Route path="/household" element={<Household />} />
+        <Route path="/macro-calculator" element={<MacroCalculator />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/diary" replace />} />
+        <Route path="*" element={<Navigate to="/plan" replace />} />
       </Route>
     </Routes>
   );

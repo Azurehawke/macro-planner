@@ -12,7 +12,8 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
 - Each food shows every recipe currently using it ("used in"), updated live —
   no manual re-linking needed
 - Per-user **daily macro goals**, set on the Settings page — either by hand,
-  or via the built-in **macro calculator** (sex, age, weight, height, 7-level
+  or via the **macro calculator** page (linked from the nav and from
+  Settings) using sex, age, weight, height, 7-level
   activity scale, goal, and — for weight loss — a target rate up to 2 lb/week
   plus an optional goal weight with an estimated time-to-goal) using the
   Mifflin-St Jeor formula, the same one MyFitnessPal's calculator is built
@@ -26,12 +27,17 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   who wants a higher protein floor than the standard percentage split gives.
   "Use these targets" writes straight into your goals, so it's easy to
   recompute every 15-20 lbs or whenever your goal changes
-- A per-user **daily plan** for what you intend to eat (not a consumption log —
-  pair it with whatever app you already use to track what you actually ate).
-  Each planned food or recipe has a slider to dial its amount down or up
-  (e.g. plan in just half a bun from a sandwich recipe). Carbs/fat/protein
-  each get their own card showing what's planned so far and what's left
-  against your Settings-page goal
+- A **weekly plan** grid (Sun-Sat across the top, Breakfast/Lunch/Dinner/Snack
+  down the side) — drag a food or recipe from the sidebar onto a cell to plan
+  it, or drag an already-planned card to a different day/meal to reschedule
+  it. Each cell also offers a one-click "copy" from yesterday's or last week's
+  same meal slot, and a "Copy last week" button repeats the whole week at
+  once. Clicking a day's header, or any card on mobile (where the grid gives
+  way to a simple day list), opens that day's full view: colored macro-goal
+  cards, sliders to dial each planned food or recipe up or down (e.g. plan in
+  just half a bun from a sandwich recipe), and the markdown export
+- Clicking a planned card in the grid opens a popup to change its day, meal
+  slot, or amount without leaving the week view
 - A **shopping list** shared by the whole household — add ingredients straight
   from a recipe (scaled by a servings multiplier) or as one-off items, and
   check items off collaboratively
@@ -136,7 +142,10 @@ The Vite dev server proxies `/api` to `http://localhost:3000` (override with
   base quantity); a recipe entry snapshots each of the recipe's components
   into `diary_entry_components`, each with its own independently adjustable
   `fraction` — so a planned sandwich can be dialed down to "just half the
-  bottom bun" without changing the underlying recipe.
+  bottom bun" without changing the underlying recipe. `meal_slot` is a plain
+  text column (breakfast/lunch/dinner/snack/other) rather than an enum, kept
+  editable via `PATCH /api/diary/:id` (also used to reschedule an entry's
+  date) and duplicated across days via `POST /api/diary/copy`.
 - `shopping_lists` + `shopping_list_items` — scoped to a household (not a
   single user), so any household member can add to or check off the same
   list. Adding a recipe expands its components into (aggregated) list items.

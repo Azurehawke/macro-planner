@@ -6,6 +6,22 @@ const { scaleFood, sumMacros } = require('../utils/macros');
 const router = express.Router();
 router.use(requireAuth, requireHousehold);
 
+const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
+
+// pg parses `date` columns as a UTC-midnight Date (built via Date.UTC from
+// the stored Y/M/D, with no server-timezone involved), so toISOString()'s
+// date portion always matches the stored date exactly - safe to use as a
+// grouping key or to hand back to the client as a plain YYYY-MM-DD string.
+function toDateStr(value) {
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+}
+
+function addDaysISO(dateStr, days) {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 async function fetchEntryRows(userId, date) {
   const { rows } = await pool.query(
     `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
@@ -75,7 +91,7 @@ function buildFoodEntry(row) {
   const unit_macros = scaleFood(foodLike, base_quantity_g);
   return {
     id: row.id,
-    entry_date: row.entry_date,
+    entry_date: toDateStr(row.entry_date),
     item_type: 'food',
     food_id: row.food_id,
     recipe_id: null,
@@ -92,7 +108,7 @@ function buildFoodEntry(row) {
 function buildRecipeEntry(row, components) {
   return {
     id: row.id,
-    entry_date: row.entry_date,
+    entry_date: toDateStr(row.entry_date),
     item_type: 'recipe',
     food_id: null,
     recipe_id: row.recipe_id,
@@ -123,6 +139,50 @@ router.get('/', async (req, res) => {
     date,
     entries,
     totals,
+    goals: {
+      carbs_g: req.user.daily_carbs_goal_g,
+      fat_g: req.user.daily_fat_goal_g,
+      protein_g: req.user.daily_protein_goal_g,
+    },
+  });
+});
+
+// Seven days of entries starting at `start` (the frontend always passes a
+// Sunday), for the week-grid planner - one request instead of seven.
+router.get('/week', async (req, res) => {
+  const start = req.query.start;
+  if (!start) return res.status(400).json({ error: 'start query param (YYYY-MM-DD) is required' });
+  const end = addDaysISO(start, 6);
+
+  const { rows } = await pool.query(
+    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
+            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
+            r.name AS recipe_name
+     FROM diary_entries de
+     LEFT JOIN foods f ON f.id = de.food_id
+     LEFT JOIN recipes r ON r.id = de.recipe_id
+     WHERE de.user_id = $1 AND de.entry_date BETWEEN $2 AND $3
+     ORDER BY de.entry_date ASC, de.created_at ASC`,
+    [req.user.id, start, end]
+  );
+  const entries = await buildEntries(rows);
+
+  const byDate = new Map();
+  for (let i = 0; i < 7; i++) byDate.set(addDaysISO(start, i), []);
+  for (const entry of entries) {
+    if (!byDate.has(entry.entry_date)) byDate.set(entry.entry_date, []);
+    byDate.get(entry.entry_date).push(entry);
+  }
+
+  const days = Array.from(byDate.entries()).map(([date, dayEntries]) => ({
+    date,
+    entries: dayEntries,
+    totals: sumMacros(dayEntries.map((e) => e.macros)),
+  }));
+
+  res.json({
+    start,
+    days,
     goals: {
       carbs_g: req.user.daily_carbs_goal_g,
       fat_g: req.user.daily_fat_goal_g,
@@ -211,6 +271,57 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Duplicates entries from one day to another - either a single meal slot
+// (the per-cell "copy from yesterday" shortcut) or, with meal_slot omitted,
+// the whole day (used seven times over to "copy last week"). Recipe entries
+// bring their diary_entry_components snapshot along so the copy is
+// independently adjustable, same as any other planned recipe.
+router.post('/copy', async (req, res) => {
+  const { from_date, to_date, meal_slot } = req.body || {};
+  if (!from_date || !to_date) return res.status(400).json({ error: 'from_date and to_date are required' });
+  if (meal_slot != null && !MEAL_SLOTS.includes(meal_slot)) {
+    return res.status(400).json({ error: 'Invalid meal_slot' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: sourceRows } = await client.query(
+      `SELECT id, item_type, food_id, recipe_id, fraction, meal_slot
+       FROM diary_entries
+       WHERE user_id = $1 AND entry_date = $2 ${meal_slot != null ? 'AND meal_slot = $3' : ''}`,
+      meal_slot != null ? [req.user.id, from_date, meal_slot] : [req.user.id, from_date]
+    );
+
+    for (const src of sourceRows) {
+      const { rows: inserted } = await client.query(
+        `INSERT INTO diary_entries (user_id, entry_date, item_type, food_id, recipe_id, fraction, meal_slot)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [req.user.id, to_date, src.item_type, src.food_id, src.recipe_id, src.fraction, src.meal_slot]
+      );
+      if (src.item_type === 'recipe') {
+        await client.query(
+          `INSERT INTO diary_entry_components (diary_entry_id, food_id, base_quantity_g, fraction)
+           SELECT $1, food_id, base_quantity_g, fraction FROM diary_entry_components WHERE diary_entry_id = $2`,
+          [inserted[0].id, src.id]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    const entryRows = await fetchEntryRows(req.user.id, to_date);
+    const entries = await buildEntries(entryRows);
+    res.status(201).json({ date: to_date, entries, copied: sourceRows.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to copy entries' });
+  } finally {
+    client.release();
+  }
+});
+
 // Adjust a plain food entry's overall fraction (e.g. "I'll only eat half of this serving").
 router.put('/:id', async (req, res) => {
   const { fraction } = req.body || {};
@@ -221,6 +332,51 @@ router.put('/:id', async (req, res) => {
      WHERE id = $2 AND user_id = $3 AND item_type = 'food'
      RETURNING id`,
     [fraction, req.params.id, req.user.id]
+  );
+  if (rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
+
+  const entryRows = await pool.query(
+    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
+            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
+            r.name AS recipe_name
+     FROM diary_entries de
+     LEFT JOIN foods f ON f.id = de.food_id
+     LEFT JOIN recipes r ON r.id = de.recipe_id
+     WHERE de.id = $1`,
+    [req.params.id]
+  );
+  const [entry] = await buildEntries(entryRows.rows);
+  res.json({ entry });
+});
+
+// Reschedules an entry to a different day and/or meal slot - used by both
+// the week grid's drag-and-drop and the adjust popup's Day/Meal dropdowns.
+router.patch('/:id', async (req, res) => {
+  const { entry_date, meal_slot } = req.body || {};
+  if (entry_date == null && meal_slot == null) {
+    return res.status(400).json({ error: 'entry_date and/or meal_slot is required' });
+  }
+  if (meal_slot != null && !MEAL_SLOTS.includes(meal_slot)) {
+    return res.status(400).json({ error: 'Invalid meal_slot' });
+  }
+
+  const sets = [];
+  const values = [];
+  if (entry_date != null) {
+    sets.push(`entry_date = $${values.length + 1}`);
+    values.push(entry_date);
+  }
+  if (meal_slot != null) {
+    sets.push(`meal_slot = $${values.length + 1}`);
+    values.push(meal_slot);
+  }
+  values.push(req.params.id, req.user.id);
+
+  const { rows } = await pool.query(
+    `UPDATE diary_entries SET ${sets.join(', ')}
+     WHERE id = $${values.length - 1} AND user_id = $${values.length}
+     RETURNING id`,
+    values
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
 
