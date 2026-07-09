@@ -129,14 +129,21 @@ router.put('/:id', async (req, res) => {
   if (!name || carbs_g == null || fat_g == null || protein_g == null) {
     return res.status(400).json({ error: 'name, carbs_g, fat_g and protein_g are required' });
   }
-  const { rows } = await pool.query(
-    `UPDATE foods SET name = $1, base_quantity_g = $2, carbs_g = $3, fat_g = $4, protein_g = $5
-     WHERE id = $6 AND household_id = $7
-     RETURNING *`,
-    [name.trim(), base_quantity_g || 100, carbs_g, fat_g, protein_g, req.params.id, req.user.household_id]
-  );
-  if (rows.length === 0) return res.status(404).json({ error: 'Food not found' });
-  res.json({ food: withCalories(rows[0]) });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE foods SET name = $1, base_quantity_g = $2, carbs_g = $3, fat_g = $4, protein_g = $5
+       WHERE id = $6 AND household_id = $7
+       RETURNING *`,
+      [name.trim(), base_quantity_g || 100, carbs_g, fat_g, protein_g, req.params.id, req.user.household_id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Food not found' });
+    res.json({ food: withCalories(rows[0]) });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'A food with that name already exists' });
+    }
+    throw err;
+  }
 });
 
 router.delete('/:id', async (req, res) => {

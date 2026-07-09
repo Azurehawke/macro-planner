@@ -9,7 +9,11 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   and recipes** so there's something to explore right away (joining an
   existing household via invite code skips this, since it already has real
   data)
-- A shared **foods** database (macros per gram, entered from scratch)
+- A shared **foods** database. Macros are entered per a serving size you
+  choose (defaults to 100g, but any gram amount works) — changing that
+  amount later automatically scales the carbs/fat/protein fields to match,
+  so switching a food from "per 100g" to "per 1 cup (240g)" doesn't require
+  re-doing the math by hand
 - **Recipes** built from foods (or other components), with total macros computed
   live from the ingredients — editing a food's macros immediately updates every
   recipe that uses it
@@ -64,6 +68,13 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   copying days/weeks, the shopping list, and goals — shown automatically the
   first time a browser opens the app, and reopenable anytime from the "?"
   button in the nav
+- A **measurement converter** (ruler icon in the nav) for filling in gram
+  amounts when entering foods or recipe quantities — exact weight
+  conversions (g/kg/oz/lb), exact volume conversions (mL/L/tsp/tbsp/cup/fl
+  oz), and a volume-to-grams calculator using approximate ingredient
+  densities (flour, sugar, butter, etc., or your own custom "grams per cup"
+  from a product label). It opens as a side panel that stays open while you
+  keep filling out the form behind it
 
 ## Stack
 

@@ -4,6 +4,14 @@ import { csvToObjects, downloadCsv } from '../utils/csv.js';
 
 const emptyForm = { name: '', base_quantity_g: 100, carbs_g: '', fat_g: '', protein_g: '' };
 
+// Scales a macro field by `ratio`, leaving it untouched if it isn't a valid
+// number yet (e.g. still blank while adding a new food).
+function scaleField(value, ratio) {
+  const num = Number(value);
+  if (value === '' || !Number.isFinite(num)) return value;
+  return Math.round(num * ratio * 10) / 10;
+}
+
 const FOODS_TEMPLATE_HEADER = ['name', 'base_quantity_g', 'carbs_g', 'fat_g', 'protein_g'];
 const FOODS_TEMPLATE_ROWS = [
   ['Chicken Breast', '100', '0', '3.6', '31'],
@@ -35,6 +43,26 @@ export default function Foods() {
   const [importError, setImportError] = useState('');
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
+
+  // The gram amount at the moment "Per grams" was focused, so blurring it
+  // can scale the macro fields by how much that amount changed - e.g. typing
+  // 240 over 100 doubles carbs/fat/protein to match, instead of leaving them
+  // as if nothing changed.
+  const [baseAtFocus, setBaseAtFocus] = useState(null);
+
+  const onBaseQuantityBlur = () => {
+    const newBase = Number(form.base_quantity_g);
+    if (baseAtFocus && newBase > 0 && newBase !== baseAtFocus) {
+      const ratio = newBase / baseAtFocus;
+      setForm((f) => ({
+        ...f,
+        carbs_g: scaleField(f.carbs_g, ratio),
+        fat_g: scaleField(f.fat_g, ratio),
+        protein_g: scaleField(f.protein_g, ratio),
+      }));
+    }
+    setBaseAtFocus(null);
+  };
 
   // Close the results dropdown on an outside click, so it overlays the rest
   // of the page (foods list, add-food form) instead of shifting it around.
@@ -327,9 +355,15 @@ export default function Foods() {
             min="1"
             required
             value={form.base_quantity_g}
+            onFocus={() => setBaseAtFocus(Number(form.base_quantity_g) || null)}
+            onBlur={onBaseQuantityBlur}
             onChange={(e) => setForm({ ...form, base_quantity_g: e.target.value })}
             className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+            Changing this scales carbs/fat/protein below to match. Not sure how many grams your serving
+            is? Use the converter (ruler icon in the nav).
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Carbs (g)</label>

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import OnboardingModal from './OnboardingModal.jsx';
+import UnitConverterDrawer from './UnitConverterDrawer.jsx';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../utils/onboarding.js';
 
 const navItems = [
@@ -60,10 +61,22 @@ function HelpButton({ className, onClick }) {
   );
 }
 
+function ConverterButton({ className, onClick }) {
+  return (
+    <button onClick={onClick} aria-label="Measurement converter" title="Measurement converter" className={className}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="7" width="18" height="10" rx="1.5" transform="rotate(-8 12 12)" />
+        <path strokeLinecap="round" d="M6.3 9.3l.5 1.6M9.2 8.4l.9 3M12.2 7.6l.5 1.6M15 6.8l.9 3" />
+      </svg>
+    </button>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showConverter, setShowConverter] = useState(false);
   const location = useLocation();
   const headerRef = useRef(null);
 
@@ -115,6 +128,10 @@ export default function Layout() {
           <div className="hidden sm:flex items-center gap-3 text-sm">
             <span>{user?.name}</span>
             <HelpButton className="p-1.5 rounded hover:bg-emerald-800" onClick={() => setShowOnboarding(true)} />
+            <ConverterButton
+              className="p-1.5 rounded hover:bg-emerald-800"
+              onClick={() => setShowConverter((open) => !open)}
+            />
             <ThemeToggleButton className="p-1.5 rounded hover:bg-emerald-800" />
             <button onClick={logout} className="bg-emerald-900 px-3 py-1 rounded hover:bg-emerald-800">
               Log out
@@ -148,6 +165,10 @@ export default function Layout() {
               <span>{user?.name}</span>
               <div className="flex items-center gap-2">
                 <HelpButton className="p-1.5 rounded hover:bg-emerald-800" onClick={() => setShowOnboarding(true)} />
+                <ConverterButton
+                  className="p-1.5 rounded hover:bg-emerald-800"
+                  onClick={() => setShowConverter((open) => !open)}
+                />
                 <ThemeToggleButton className="p-1.5 rounded hover:bg-emerald-800" />
                 <button onClick={logout} className="bg-emerald-900 px-3 py-1 rounded hover:bg-emerald-800">
                   Log out
@@ -161,6 +182,7 @@ export default function Layout() {
         <Outlet />
       </main>
       {showOnboarding && <OnboardingModal onClose={closeOnboarding} />}
+      <UnitConverterDrawer open={showConverter} onClose={() => setShowConverter(false)} />
     </div>
   );
 }

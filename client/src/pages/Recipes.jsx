@@ -196,7 +196,13 @@ export default function Recipes() {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Components</label>
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium">Components</label>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              Quantities are in grams — converting from cups/tbsp/oz? Use the converter (ruler icon in the
+              nav).
+            </span>
+          </div>
           {components.map((c, idx) => (
             <div key={idx} className="flex gap-2 items-center">
               <select
