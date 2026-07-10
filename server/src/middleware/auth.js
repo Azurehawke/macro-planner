@@ -8,8 +8,11 @@ async function requireAuth(req, res, next) {
 
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const { rows } = await pool.query(
-      `SELECT id, email, name, household_id, daily_carbs_goal_g, daily_fat_goal_g, daily_protein_goal_g
-       FROM users WHERE id = $1`,
+      `SELECT u.id, u.email, u.name, u.household_id, u.daily_carbs_goal_g, u.daily_fat_goal_g, u.daily_protein_goal_g,
+              h.track_net_carbs
+       FROM users u
+       LEFT JOIN households h ON h.id = u.household_id
+       WHERE u.id = $1`,
       [payload.userId]
     );
     if (rows.length === 0) return res.status(401).json({ error: 'Not authenticated' });

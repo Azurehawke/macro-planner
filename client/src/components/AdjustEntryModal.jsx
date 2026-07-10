@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { dayOfWeekLabel, formatShortDate } from '../utils/date.js';
 
 const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 const MEAL_SLOT_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack', other: 'Other' };
-const MAX_FRACTION = 3;
+// A serving isn't capped at "3x" the way a vague fraction was - a food whose
+// serving is small (e.g. one almond) can reasonably need many servings.
+const MAX_SERVINGS = 10;
 
 function scaleMacros(unitMacros, fraction) {
   return {
     carbs_g: unitMacros.carbs_g * fraction,
     fat_g: unitMacros.fat_g * fraction,
     protein_g: unitMacros.protein_g * fraction,
+    net_carbs_g: (unitMacros.net_carbs_g ?? unitMacros.carbs_g) * fraction,
     calories: unitMacros.calories * fraction,
   };
 }
@@ -20,6 +24,8 @@ function scaleMacros(unitMacros, fraction) {
 // immediately (same effect as dragging the card to another cell) and just
 // refresh the grid behind the modal; only Remove/Done actually close it.
 export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
+  const { user } = useAuth();
+  const trackNetCarbs = Boolean(user?.track_net_carbs);
   const [day, setDay] = useState(entry.entry_date);
   const [slot, setSlot] = useState(entry.meal_slot);
   const [fraction, setFraction] = useState(entry.item_type === 'food' ? entry.fraction : null);
@@ -44,6 +50,8 @@ export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
   };
 
   const previewMacros = entry.item_type === 'food' ? scaleMacros(entry.unit_macros, fraction) : entry.macros;
+  const carbsValue = trackNetCarbs ? previewMacros.net_carbs_g : previewMacros.carbs_g;
+  const carbsLabel = trackNetCarbs ? 'net carbs' : 'carbs';
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -91,13 +99,13 @@ export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
         {entry.item_type === 'food' ? (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Amount</span>
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400">{fraction.toFixed(2)}x</span>
+              <span>Servings</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">{fraction.toFixed(2)}</span>
             </div>
             <input
               type="range"
               min="0"
-              max={MAX_FRACTION}
+              max={MAX_SERVINGS}
               step="0.05"
               value={fraction}
               onChange={(e) => setFraction(Number(e.target.value))}
@@ -107,14 +115,14 @@ export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
               className="w-full accent-emerald-700"
             />
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {Math.round(previewMacros.calories)} kcal · {Math.round(previewMacros.carbs_g)}g carbs ·{' '}
+              {Math.round(previewMacros.calories)} kcal · {Math.round(carbsValue)}g {carbsLabel} ·{' '}
               {Math.round(previewMacros.fat_g)}g fat · {Math.round(previewMacros.protein_g)}g protein
             </p>
           </div>
         ) : (
           <div className="space-y-1.5">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {Math.round(previewMacros.calories)} kcal · {Math.round(previewMacros.carbs_g)}g carbs ·{' '}
+              {Math.round(previewMacros.calories)} kcal · {Math.round(carbsValue)}g {carbsLabel} ·{' '}
               {Math.round(previewMacros.fat_g)}g fat · {Math.round(previewMacros.protein_g)}g protein
             </p>
             <Link

@@ -6,11 +6,11 @@ const { scaleFood, sumMacros } = require('../utils/macros');
 const router = express.Router();
 router.use(requireAuth, requireHousehold);
 
-async function fetchComponentsForRecipes(householdId, recipeIds) {
+async function fetchComponentsForRecipes(householdId, recipeIds, useNetCarbs) {
   if (recipeIds.length === 0) return new Map();
   const { rows } = await pool.query(
     `SELECT rc.recipe_id, rc.quantity_g, f.id AS food_id, f.name AS food_name,
-            f.base_quantity_g, f.carbs_g, f.fat_g, f.protein_g
+            f.serving_size_g, f.carbs_g, f.fat_g, f.protein_g, f.fiber_g
      FROM recipe_components rc
      JOIN foods f ON f.id = rc.food_id
      JOIN recipes r ON r.id = rc.recipe_id
@@ -21,7 +21,7 @@ async function fetchComponentsForRecipes(householdId, recipeIds) {
 
   const byRecipe = new Map();
   for (const row of rows) {
-    const macros = scaleFood(row, Number(row.quantity_g));
+    const macros = scaleFood(row, Number(row.quantity_g), useNetCarbs);
     const component = {
       food_id: row.food_id,
       food_name: row.food_name,
@@ -41,7 +41,8 @@ router.get('/', async (req, res) => {
   );
   const componentsByRecipe = await fetchComponentsForRecipes(
     req.user.household_id,
-    recipes.map((r) => r.id)
+    recipes.map((r) => r.id),
+    req.user.track_net_carbs
   );
   const result = recipes.map((recipe) => {
     const components = componentsByRecipe.get(recipe.id) || [];
@@ -85,7 +86,7 @@ router.post('/', async (req, res) => {
     }
 
     await client.query('COMMIT');
-    const componentsByRecipe = await fetchComponentsForRecipes(req.user.household_id, [recipe.id]);
+    const componentsByRecipe = await fetchComponentsForRecipes(req.user.household_id, [recipe.id], req.user.track_net_carbs);
     const withComponents = componentsByRecipe.get(recipe.id) || [];
     res.status(201).json({ recipe: { ...recipe, components: withComponents, totals: sumMacros(withComponents) } });
   } catch (err) {
@@ -192,7 +193,7 @@ router.get('/:id', async (req, res) => {
     req.user.household_id,
   ]);
   if (rows.length === 0) return res.status(404).json({ error: 'Recipe not found' });
-  const componentsByRecipe = await fetchComponentsForRecipes(req.user.household_id, [rows[0].id]);
+  const componentsByRecipe = await fetchComponentsForRecipes(req.user.household_id, [rows[0].id], req.user.track_net_carbs);
   const components = componentsByRecipe.get(rows[0].id) || [];
   res.json({ recipe: { ...rows[0], components, totals: sumMacros(components) } });
 });
@@ -236,7 +237,7 @@ router.put('/:id', async (req, res) => {
     }
 
     await client.query('COMMIT');
-    const componentsByRecipe = await fetchComponentsForRecipes(req.user.household_id, [recipe.id]);
+    const componentsByRecipe = await fetchComponentsForRecipes(req.user.household_id, [recipe.id], req.user.track_net_carbs);
     const withComponents = componentsByRecipe.get(recipe.id) || [];
     res.json({ recipe: { ...recipe, components: withComponents, totals: sumMacros(withComponents) } });
   } catch (err) {

@@ -1,8 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { csvToObjects, downloadCsv } from '../utils/csv.js';
+import { SERVING_UNITS, convertWeight, isWeightUnit } from '../utils/unitConversion.js';
 
-const emptyForm = { name: '', base_quantity_g: 100, carbs_g: '', fat_g: '', protein_g: '' };
+const emptyForm = {
+  name: '',
+  serving_size_qty: 100,
+  serving_size_unit: 'g',
+  manual_grams: '',
+  carbs_g: '',
+  fat_g: '',
+  protein_g: '',
+  fiber_g: '',
+};
 
 // Scales a macro field by `ratio`, leaving it untouched if it isn't a valid
 // number yet (e.g. still blank while adding a new food).
@@ -12,12 +23,59 @@ function scaleField(value, ratio) {
   return Math.round(num * ratio * 10) / 10;
 }
 
-const FOODS_TEMPLATE_HEADER = ['name', 'base_quantity_g', 'carbs_g', 'fat_g', 'protein_g'];
+// The one gram figure everything downstream (recipes, shopping list, diary
+// fractions) actually multiplies against - always qty * grams-per-one-unit,
+// same shape regardless of unit. Weight units convert exactly (grams per oz/
+// lb/kg is a fixed constant); volume units and "each" need the food's own
+// density/size, which only the user can supply (the manual_grams field, read
+// as "grams per one {unit}", e.g. grams per cup).
+function resolvedGrams(f) {
+  const qty = Number(f.serving_size_qty);
+  if (!Number.isFinite(qty) || qty <= 0) return null;
+  let perUnitGrams;
+  if (f.serving_size_unit === 'g') {
+    perUnitGrams = 1;
+  } else if (isWeightUnit(f.serving_size_unit)) {
+    perUnitGrams = convertWeight(1, f.serving_size_unit, 'g');
+  } else {
+    const manual = Number(f.manual_grams);
+    if (!Number.isFinite(manual) || manual <= 0) return null;
+    perUnitGrams = manual;
+  }
+  return qty * perUnitGrams;
+}
+
+function unitLabel(unit) {
+  return SERVING_UNITS.find((u) => u.value === unit)?.label || unit;
+}
+
+// Short singular form for "grams per ___" phrasing - the dropdown's own
+// labels are either plural ("cups") or too long ("each (e.g. 1 egg...)") to
+// read naturally there.
+const SHORT_UNIT = { cup: 'cup', tbsp: 'tbsp', tsp: 'tsp', mL: 'mL', L: 'L', flOz: 'fl oz', each: 'each' };
+
+function pluralUnit(unit, qty) {
+  const short = SHORT_UNIT[unit] || unit;
+  if (short === 'each' || Number(qty) === 1) return short;
+  return `${short}s`;
+}
+
+const FOODS_TEMPLATE_HEADER = [
+  'name',
+  'serving_size_g',
+  'serving_size_qty',
+  'serving_size_unit',
+  'carbs_g',
+  'fat_g',
+  'protein_g',
+  'fiber_g',
+];
 const FOODS_TEMPLATE_ROWS = [
-  ['Chicken Breast', '100', '0', '3.6', '31'],
-  // base_quantity_g doesn't have to be 100 - here it's a 1-cup (90g) serving,
-  // showing the macros scaled to match (66/7/17 per 100g -> 59.4/6.3/15.3 per 90g).
-  ['Rolled Oats', '90', '59.4', '6.3', '15.3'],
+  ['Chicken Breast', '100', '100', 'g', '0', '3.6', '31', ''],
+  // serving_size_g is the one required gram figure - here it's a 1-cup (90g)
+  // serving; serving_size_qty/unit are just the label ("1 cup") shown for it.
+  // fiber_g is optional - leave blank if you don't track it.
+  ['Rolled Oats', '90', '1', 'cup', '59.4', '6.3', '15.3', '9.5'],
 ];
 
 const SOURCE_LABELS = {
@@ -26,6 +84,9 @@ const SOURCE_LABELS = {
 };
 
 export default function Foods() {
+  const { user } = useAuth();
+  const trackNetCarbs = Boolean(user?.track_net_carbs);
+
   const [foods, setFoods] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -46,25 +107,45 @@ export default function Foods() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // The gram amount at the moment "Per grams" was focused, so blurring it
-  // can scale the macro fields by how much that amount changed - e.g. typing
-  // 240 over 100 doubles carbs/fat/protein to match, instead of leaving them
-  // as if nothing changed.
-  const [baseAtFocus, setBaseAtFocus] = useState(null);
+  // The resolved gram amount at the moment the qty/manual-grams field was
+  // focused, so blurring it can scale the macro fields by how much that
+  // amount changed - e.g. going from a 100g to a 250g serving doubles-and-a-
+  // half carbs/fat/protein/fiber to match, instead of leaving them as if
+  // nothing changed. Only fires on blur (not every keystroke) so typing
+  // "2", "25", "250" doesn't scale three times over.
+  const [gramsAtFocus, setGramsAtFocus] = useState(null);
 
-  const onBaseQuantityBlur = () => {
-    const newBase = Number(form.base_quantity_g);
-    if (baseAtFocus && newBase > 0 && newBase !== baseAtFocus) {
-      const ratio = newBase / baseAtFocus;
-      setForm((f) => ({
-        ...f,
-        carbs_g: scaleField(f.carbs_g, ratio),
-        fat_g: scaleField(f.fat_g, ratio),
-        protein_g: scaleField(f.protein_g, ratio),
-      }));
+  const captureGramsAtFocus = () => setGramsAtFocus(resolvedGrams(form));
+
+  const scaleIfChanged = (nextForm, before) => {
+    const after = resolvedGrams(nextForm);
+    if (before && after && after !== before) {
+      const ratio = after / before;
+      return {
+        ...nextForm,
+        carbs_g: scaleField(nextForm.carbs_g, ratio),
+        fat_g: scaleField(nextForm.fat_g, ratio),
+        protein_g: scaleField(nextForm.protein_g, ratio),
+        fiber_g: scaleField(nextForm.fiber_g, ratio),
+      };
     }
-    setBaseAtFocus(null);
+    return nextForm;
   };
+
+  const onQtyOrGramsBlur = () => {
+    setForm((f) => scaleIfChanged(f, gramsAtFocus));
+    setGramsAtFocus(null);
+  };
+
+  // Changing the unit is a single deliberate action (not typed character by
+  // character), so it scales immediately rather than waiting for a blur.
+  const onUnitChange = (unit) => {
+    const before = resolvedGrams(form);
+    setForm((f) => scaleIfChanged({ ...f, serving_size_unit: unit }, before));
+  };
+
+  const servingGrams = resolvedGrams(form);
+  const needsManualGrams = form.serving_size_unit !== 'g' && !isWeightUnit(form.serving_size_unit);
 
   // Close the results dropdown on an outside click, so it overlays the rest
   // of the page (foods list, add-food form) instead of shifting it around.
@@ -90,12 +171,19 @@ export default function Foods() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!servingGrams) {
+      setError('Enter how many grams one serving is (use the converter if you only know a volume amount).');
+      return;
+    }
     const payload = {
       name: form.name,
-      base_quantity_g: Number(form.base_quantity_g),
+      serving_size_g: servingGrams,
+      serving_size_qty: Number(form.serving_size_qty),
+      serving_size_unit: form.serving_size_unit,
       carbs_g: Number(form.carbs_g),
       fat_g: Number(form.fat_g),
       protein_g: Number(form.protein_g),
+      fiber_g: form.fiber_g === '' ? null : Number(form.fiber_g),
     };
     try {
       if (editingId) {
@@ -113,12 +201,20 @@ export default function Foods() {
 
   const startEdit = (food) => {
     setEditingId(food.id);
+    const unit = food.serving_size_unit || 'g';
+    const qty = food.serving_size_qty ?? food.serving_size_g;
+    // manual_grams is "grams per one {unit}", so reverse the qty multiplication
+    // to get back to that per-unit figure from the stored total.
+    const perUnitGrams = unit !== 'g' && !isWeightUnit(unit) && qty > 0 ? food.serving_size_g / qty : null;
     setForm({
       name: food.name,
-      base_quantity_g: food.base_quantity_g,
+      serving_size_qty: qty,
+      serving_size_unit: unit,
+      manual_grams: perUnitGrams != null ? String(Math.round(perUnitGrams * 100) / 100) : '',
       carbs_g: food.carbs_g,
       fat_g: food.fat_g,
       protein_g: food.protein_g,
+      fiber_g: food.fiber_g ?? '',
     });
   };
 
@@ -150,10 +246,13 @@ export default function Foods() {
     setEditingId(null);
     setForm({
       name: result.name,
-      base_quantity_g: result.base_quantity_g,
+      serving_size_qty: result.base_quantity_g,
+      serving_size_unit: 'g',
+      manual_grams: '',
       carbs_g: result.carbs_g,
       fat_g: result.fat_g,
       protein_g: result.protein_g,
+      fiber_g: '',
     });
     setShowDropdown(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -179,10 +278,13 @@ export default function Foods() {
       }
       const foods = rows.map((r) => ({
         name: r.name,
-        base_quantity_g: r.base_quantity_g,
+        serving_size_g: r.serving_size_g,
+        serving_size_qty: r.serving_size_qty,
+        serving_size_unit: r.serving_size_unit,
         carbs_g: r.carbs_g,
         fat_g: r.fat_g,
         protein_g: r.protein_g,
+        fiber_g: r.fiber_g,
       }));
       const result = await api.post('/foods/import', { foods });
       setImportResult(result);
@@ -213,8 +315,9 @@ export default function Foods() {
       <div className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
         <h2 className="font-medium">Import from CSV</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          base_quantity_g is whatever serving size you have macros for — not necessarily 100 (see the
-          template's 1-cup oats example).
+          serving_size_g is the one required gram figure — not necessarily 100 (see the template's 1-cup
+          oats example). serving_size_qty/serving_size_unit are just the label shown for it (default to
+          matching serving_size_g in grams). fiber_g is optional.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -355,22 +458,64 @@ export default function Foods() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Per grams</label>
+          <label className="block text-sm font-medium mb-1">Servings</label>
           <input
             type="number"
-            min="1"
+            min="0.01"
+            step="any"
             required
-            value={form.base_quantity_g}
-            onFocus={() => setBaseAtFocus(Number(form.base_quantity_g) || null)}
-            onBlur={onBaseQuantityBlur}
-            onChange={(e) => setForm({ ...form, base_quantity_g: e.target.value })}
+            value={form.serving_size_qty}
+            onFocus={captureGramsAtFocus}
+            onBlur={onQtyOrGramsBlur}
+            onChange={(e) => setForm({ ...form, serving_size_qty: e.target.value })}
             className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-            Changing this scales carbs/fat/protein below to match. Not sure how many grams your serving
-            is? Use the converter (ruler icon in the nav).
-          </p>
         </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Serving size</label>
+          <select
+            value={form.serving_size_unit}
+            onChange={(e) => onUnitChange(e.target.value)}
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+          >
+            {SERVING_UNITS.map((u) => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+          {!needsManualGrams && form.serving_size_unit !== 'g' && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">= {servingGrams ? Math.round(servingGrams * 10) / 10 : '?'}g</p>
+          )}
+        </div>
+        {needsManualGrams ? (
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Grams per {SHORT_UNIT[form.serving_size_unit] || form.serving_size_unit}
+            </label>
+            <input
+              type="number"
+              min="0.1"
+              step="any"
+              required
+              placeholder="e.g. 240"
+              value={form.manual_grams}
+              onFocus={captureGramsAtFocus}
+              onBlur={onQtyOrGramsBlur}
+              onChange={(e) => setForm({ ...form, manual_grams: e.target.value })}
+              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+            />
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+              Depends on this food's density/size — use the converter (ruler icon in the nav) if you only
+              know a volume.{' '}
+              {servingGrams
+                ? `${Math.round(servingGrams * 100) / 100}g total for ${form.serving_size_qty} ${pluralUnit(form.serving_size_unit, form.serving_size_qty)}.`
+                : ''}
+            </p>
+          </div>
+        ) : (
+          <div />
+        )}
         <div>
           <label className="block text-sm font-medium mb-1">Carbs (g)</label>
           <input
@@ -407,6 +552,20 @@ export default function Foods() {
             className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
           />
         </div>
+        {trackNetCarbs && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Fiber (g)</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              placeholder="optional"
+              value={form.fiber_g}
+              onChange={(e) => setForm({ ...form, fiber_g: e.target.value })}
+              className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+            />
+          </div>
+        )}
         <div className="col-span-2 sm:col-span-6 flex gap-2">
           <button type="submit" className="bg-emerald-700 text-white rounded px-4 py-2 hover:bg-emerald-800">
             {editingId ? 'Save changes' : 'Add food'}
@@ -424,6 +583,10 @@ export default function Foods() {
             </button>
           )}
         </div>
+        <p className="col-span-2 sm:col-span-6 text-[11px] text-slate-400 dark:text-slate-500">
+          Changing servings/serving size scales carbs/fat/protein{trackNetCarbs ? '/fiber' : ''} below to
+          match.
+        </p>
         {error && <p className="text-red-600 dark:text-red-400 text-sm col-span-6">{error}</p>}
       </form>
 
@@ -437,8 +600,16 @@ export default function Foods() {
               <div>
                 <p className="font-medium">{food.name}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Per {food.base_quantity_g}g: {Number(food.carbs_g)}g carbs · {Number(food.fat_g)}g fat ·{' '}
-                  {Number(food.protein_g)}g protein · {Math.round(food.calories)} kcal
+                  Per {food.serving_size_qty}{' '}
+                  {food.serving_size_unit === 'g'
+                    ? unitLabel(food.serving_size_unit)
+                    : pluralUnit(food.serving_size_unit, food.serving_size_qty)}
+                  {food.serving_size_unit !== 'g' ? ` (${food.serving_size_g}g)` : ''}:{' '}
+                  {Number(food.carbs_g)}g carbs
+                  {trackNetCarbs && food.fiber_g != null && ` (${Number(food.net_carbs_g).toFixed(1)}g net)`} ·{' '}
+                  {Number(food.fat_g)}g fat · {Number(food.protein_g)}g protein
+                  {trackNetCarbs && food.fiber_g != null && ` · ${Number(food.fiber_g)}g fiber`} ·{' '}
+                  {Math.round(food.calories)} kcal
                 </p>
               </div>
               <div className="flex gap-2 text-sm">

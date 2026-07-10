@@ -36,6 +36,7 @@ function publicUser(user) {
     daily_carbs_goal_g: user.daily_carbs_goal_g,
     daily_fat_goal_g: user.daily_fat_goal_g,
     daily_protein_goal_g: user.daily_protein_goal_g,
+    track_net_carbs: user.track_net_carbs || false,
   };
 }
 
@@ -109,7 +110,13 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
 
-  const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+  const { rows } = await pool.query(
+    `SELECT u.*, h.track_net_carbs
+     FROM users u
+     LEFT JOIN households h ON h.id = u.household_id
+     WHERE u.email = $1`,
+    [email.toLowerCase().trim()]
+  );
   if (rows.length === 0) return res.status(401).json({ error: 'Invalid email or password' });
 
   const user = rows[0];
@@ -139,15 +146,30 @@ router.put('/me/goals', requireAuth, async (req, res) => {
      RETURNING id, email, name, household_id, daily_carbs_goal_g, daily_fat_goal_g, daily_protein_goal_g`,
     [daily_carbs_goal_g ?? null, daily_fat_goal_g ?? null, daily_protein_goal_g ?? null, req.user.id]
   );
-  res.json({ user: publicUser(rows[0]) });
+  // track_net_carbs lives on households, not users - it can't change from this
+  // endpoint, so carry over the value requireAuth already loaded.
+  res.json({ user: publicUser({ ...rows[0], track_net_carbs: req.user.track_net_carbs }) });
 });
 
 router.get('/household', requireAuth, async (req, res) => {
   if (!req.user.household_id) return res.json({ household: null });
-  const { rows } = await pool.query('SELECT id, name, invite_code FROM households WHERE id = $1', [
-    req.user.household_id,
-  ]);
+  const { rows } = await pool.query(
+    'SELECT id, name, invite_code, track_net_carbs FROM households WHERE id = $1',
+    [req.user.household_id]
+  );
   res.json({ household: rows[0] || null });
+});
+
+// Body: { track_net_carbs: boolean }. Household-wide (not per-user), so a
+// shared food/recipe's calorie total looks the same to everyone in it.
+router.put('/household/settings', requireAuth, async (req, res) => {
+  if (!req.user.household_id) return res.status(400).json({ error: 'Join or create a household first' });
+  const { track_net_carbs } = req.body || {};
+  const { rows } = await pool.query(
+    'UPDATE households SET track_net_carbs = $1 WHERE id = $2 RETURNING id, name, invite_code, track_net_carbs',
+    [Boolean(track_net_carbs), req.user.household_id]
+  );
+  res.json({ household: rows[0] });
 });
 
 module.exports = router;

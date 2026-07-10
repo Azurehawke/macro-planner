@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { csvToObjects, downloadCsv } from '../utils/csv.js';
 
 function emptyComponent() {
@@ -28,6 +29,8 @@ function groupRowsByRecipe(rows) {
 }
 
 export default function Recipes() {
+  const { user } = useAuth();
+  const trackNetCarbs = Boolean(user?.track_net_carbs);
   const [recipes, setRecipes] = useState([]);
   const [foods, setFoods] = useState([]);
   const [name, setName] = useState('');
@@ -267,7 +270,8 @@ export default function Recipes() {
               <div>
                 <p className="font-medium">{recipe.name}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Total: {Math.round(recipe.totals.carbs_g)}g carbs · {Math.round(recipe.totals.fat_g)}g fat ·{' '}
+                  Total: {Math.round(trackNetCarbs ? recipe.totals.net_carbs_g : recipe.totals.carbs_g)}g{' '}
+                  {trackNetCarbs ? 'net carbs' : 'carbs'} · {Math.round(recipe.totals.fat_g)}g fat ·{' '}
                   {Math.round(recipe.totals.protein_g)}g protein · {Math.round(recipe.totals.calories)} kcal
                 </p>
               </div>

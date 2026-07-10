@@ -22,11 +22,13 @@ function addDaysISO(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
+const ENTRY_SELECT = `de.*, f.name AS food_name, f.serving_size_g AS food_serving_size_g,
+            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
+            f.fiber_g AS food_fiber_g, r.name AS recipe_name`;
+
 async function fetchEntryRows(userId, date) {
   const { rows } = await pool.query(
-    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
-            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
-            r.name AS recipe_name
+    `SELECT ${ENTRY_SELECT}
      FROM diary_entries de
      LEFT JOIN foods f ON f.id = de.food_id
      LEFT JOIN recipes r ON r.id = de.recipe_id
@@ -37,12 +39,24 @@ async function fetchEntryRows(userId, date) {
   return rows;
 }
 
-async function fetchComponentsForEntries(entryIds) {
+async function fetchEntryRowById(id) {
+  const { rows } = await pool.query(
+    `SELECT ${ENTRY_SELECT}
+     FROM diary_entries de
+     LEFT JOIN foods f ON f.id = de.food_id
+     LEFT JOIN recipes r ON r.id = de.recipe_id
+     WHERE de.id = $1`,
+    [id]
+  );
+  return rows;
+}
+
+async function fetchComponentsForEntries(entryIds, useNetCarbs) {
   if (entryIds.length === 0) return new Map();
   const { rows } = await pool.query(
     `SELECT dec.diary_entry_id, dec.fraction, dec.base_quantity_g,
             f.id AS food_id, f.name AS food_name,
-            f.base_quantity_g AS food_base_quantity_g, f.carbs_g, f.fat_g, f.protein_g
+            f.serving_size_g AS food_serving_size_g, f.carbs_g, f.fat_g, f.protein_g, f.fiber_g
      FROM diary_entry_components dec
      JOIN foods f ON f.id = dec.food_id
      WHERE dec.diary_entry_id = ANY($1::int[])
@@ -52,14 +66,15 @@ async function fetchComponentsForEntries(entryIds) {
   const byEntry = new Map();
   for (const row of rows) {
     const foodLike = {
-      base_quantity_g: row.food_base_quantity_g,
+      serving_size_g: row.food_serving_size_g,
       carbs_g: row.carbs_g,
       fat_g: row.fat_g,
       protein_g: row.protein_g,
+      fiber_g: row.fiber_g,
     };
     // unit_macros = macros for the full recipe-defined amount (fraction 1), so the
     // frontend can recompute macros for any fraction locally as unit_macros * fraction.
-    const unit_macros = scaleFood(foodLike, Number(row.base_quantity_g));
+    const unit_macros = scaleFood(foodLike, Number(row.base_quantity_g), useNetCarbs);
     const fraction = Number(row.fraction);
     const quantity_g = Number(row.base_quantity_g) * fraction;
     const component = {
@@ -69,7 +84,7 @@ async function fetchComponentsForEntries(entryIds) {
       fraction,
       quantity_g,
       unit_macros,
-      macros: scaleFood(foodLike, quantity_g),
+      macros: scaleFood(foodLike, quantity_g, useNetCarbs),
     };
     if (!byEntry.has(row.diary_entry_id)) byEntry.set(row.diary_entry_id, []);
     byEntry.get(row.diary_entry_id).push(component);
@@ -77,18 +92,19 @@ async function fetchComponentsForEntries(entryIds) {
   return byEntry;
 }
 
-function buildFoodEntry(row) {
+function buildFoodEntry(row, useNetCarbs) {
   const foodLike = {
-    base_quantity_g: row.food_base_quantity_g,
+    serving_size_g: row.food_serving_size_g,
     carbs_g: row.food_carbs_g,
     fat_g: row.food_fat_g,
     protein_g: row.food_protein_g,
+    fiber_g: row.food_fiber_g,
   };
   const fraction = Number(row.fraction);
-  const base_quantity_g = Number(row.food_base_quantity_g);
-  const quantity_g = base_quantity_g * fraction;
-  // unit_macros = macros for one full base_quantity_g serving (fraction 1).
-  const unit_macros = scaleFood(foodLike, base_quantity_g);
+  const serving_size_g = Number(row.food_serving_size_g);
+  const quantity_g = serving_size_g * fraction;
+  // unit_macros = macros for one full serving (fraction 1).
+  const unit_macros = scaleFood(foodLike, serving_size_g, useNetCarbs);
   return {
     id: row.id,
     entry_date: toDateStr(row.entry_date),
@@ -98,10 +114,10 @@ function buildFoodEntry(row) {
     name: row.food_name,
     meal_slot: row.meal_slot,
     fraction,
-    base_quantity_g,
+    serving_size_g,
     quantity_g,
     unit_macros,
-    macros: scaleFood(foodLike, quantity_g),
+    macros: scaleFood(foodLike, quantity_g, useNetCarbs),
   };
 }
 
@@ -119,11 +135,13 @@ function buildRecipeEntry(row, components) {
   };
 }
 
-async function buildEntries(rows) {
+async function buildEntries(rows, useNetCarbs) {
   const recipeRows = rows.filter((r) => r.item_type === 'recipe');
-  const componentsByEntry = await fetchComponentsForEntries(recipeRows.map((r) => r.id));
+  const componentsByEntry = await fetchComponentsForEntries(recipeRows.map((r) => r.id), useNetCarbs);
   return rows.map((row) =>
-    row.item_type === 'food' ? buildFoodEntry(row) : buildRecipeEntry(row, componentsByEntry.get(row.id) || [])
+    row.item_type === 'food'
+      ? buildFoodEntry(row, useNetCarbs)
+      : buildRecipeEntry(row, componentsByEntry.get(row.id) || [])
   );
 }
 
@@ -132,7 +150,7 @@ router.get('/', async (req, res) => {
   if (!date) return res.status(400).json({ error: 'date query param (YYYY-MM-DD) is required' });
 
   const rows = await fetchEntryRows(req.user.id, date);
-  const entries = await buildEntries(rows);
+  const entries = await buildEntries(rows, req.user.track_net_carbs);
   const totals = sumMacros(entries.map((e) => e.macros));
 
   res.json({
@@ -155,9 +173,7 @@ router.get('/week', async (req, res) => {
   const end = addDaysISO(start, 6);
 
   const { rows } = await pool.query(
-    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
-            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
-            r.name AS recipe_name
+    `SELECT ${ENTRY_SELECT}
      FROM diary_entries de
      LEFT JOIN foods f ON f.id = de.food_id
      LEFT JOIN recipes r ON r.id = de.recipe_id
@@ -165,7 +181,7 @@ router.get('/week', async (req, res) => {
      ORDER BY de.entry_date ASC, de.created_at ASC`,
     [req.user.id, start, end]
   );
-  const entries = await buildEntries(rows);
+  const entries = await buildEntries(rows, req.user.track_net_carbs);
 
   const byDate = new Map();
   for (let i = 0; i < 7; i++) byDate.set(addDaysISO(start, i), []);
@@ -251,17 +267,8 @@ router.post('/', async (req, res) => {
 
     await client.query('COMMIT');
 
-    const entryRows = await pool.query(
-      `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
-              f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
-              r.name AS recipe_name
-       FROM diary_entries de
-       LEFT JOIN foods f ON f.id = de.food_id
-       LEFT JOIN recipes r ON r.id = de.recipe_id
-       WHERE de.id = $1`,
-      [entryId]
-    );
-    const [entry] = await buildEntries(entryRows.rows);
+    const entryRows = await fetchEntryRowById(entryId);
+    const [entry] = await buildEntries(entryRows, req.user.track_net_carbs);
     res.status(201).json({ entry });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -312,7 +319,7 @@ router.post('/copy', async (req, res) => {
     await client.query('COMMIT');
 
     const entryRows = await fetchEntryRows(req.user.id, to_date);
-    const entries = await buildEntries(entryRows);
+    const entries = await buildEntries(entryRows, req.user.track_net_carbs);
     res.status(201).json({ date: to_date, entries, copied: sourceRows.length });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -335,17 +342,8 @@ router.put('/:id', async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
 
-  const entryRows = await pool.query(
-    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
-            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
-            r.name AS recipe_name
-     FROM diary_entries de
-     LEFT JOIN foods f ON f.id = de.food_id
-     LEFT JOIN recipes r ON r.id = de.recipe_id
-     WHERE de.id = $1`,
-    [req.params.id]
-  );
-  const [entry] = await buildEntries(entryRows.rows);
+  const entryRows = await fetchEntryRowById(req.params.id);
+  const [entry] = await buildEntries(entryRows, req.user.track_net_carbs);
   res.json({ entry });
 });
 
@@ -380,17 +378,8 @@ router.patch('/:id', async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
 
-  const entryRows = await pool.query(
-    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
-            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
-            r.name AS recipe_name
-     FROM diary_entries de
-     LEFT JOIN foods f ON f.id = de.food_id
-     LEFT JOIN recipes r ON r.id = de.recipe_id
-     WHERE de.id = $1`,
-    [req.params.id]
-  );
-  const [entry] = await buildEntries(entryRows.rows);
+  const entryRows = await fetchEntryRowById(req.params.id);
+  const [entry] = await buildEntries(entryRows, req.user.track_net_carbs);
   res.json({ entry });
 });
 
@@ -409,17 +398,8 @@ router.put('/:id/components/:foodId', async (req, res) => {
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Component not found' });
 
-  const entryRows = await pool.query(
-    `SELECT de.*, f.name AS food_name, f.base_quantity_g AS food_base_quantity_g,
-            f.carbs_g AS food_carbs_g, f.fat_g AS food_fat_g, f.protein_g AS food_protein_g,
-            r.name AS recipe_name
-     FROM diary_entries de
-     LEFT JOIN foods f ON f.id = de.food_id
-     LEFT JOIN recipes r ON r.id = de.recipe_id
-     WHERE de.id = $1`,
-    [req.params.id]
-  );
-  const [entry] = await buildEntries(entryRows.rows);
+  const entryRows = await fetchEntryRowById(req.params.id);
+  const [entry] = await buildEntries(entryRows, req.user.track_net_carbs);
   res.json({ entry });
 });
 

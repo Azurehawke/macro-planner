@@ -9,11 +9,22 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   and recipes** so there's something to explore right away (joining an
   existing household via invite code skips this, since it already has real
   data)
-- A shared **foods** database. Macros are entered per a serving size you
-  choose (defaults to 100g, but any gram amount works) — changing that
-  amount later automatically scales the carbs/fat/protein fields to match,
-  so switching a food from "per 100g" to "per 1 cup (240g)" doesn't require
-  re-doing the math by hand
+- A shared **foods** database. Macros are entered per a **serving** —
+  pick a standard unit (g, kg, oz, lb, mL, L, tsp, tbsp, cup, fl oz, or
+  "each"; defaults to grams) and a quantity. Weight units convert to grams
+  automatically; volume and "each" units ask for the grams-per-unit so the
+  app can still do the math (e.g. "1 cup = 240g"). Changing the serving
+  quantity or its gram weight later automatically scales the
+  carbs/fat/protein fields to match. Planning a food or recipe then works in
+  **servings** (e.g. 0.25 servings of a 144g serving of strawberries), not a
+  raw gram override
+- Optional **Net Carbs** tracking, toggled per household on the Household
+  page. When on, foods can record a **Fiber (g)** value alongside carbs;
+  fiber is subtracted from carbs (floored at zero) before the calorie
+  calculation, and every macro total — foods, recipes, the daily plan, and
+  goals — labels and computes "Net Carbs" instead of "Carbs" for any food
+  that has fiber recorded. Foods without a fiber value are unaffected
+  either way
 - **Recipes** built from foods (or other components), with total macros computed
   live from the ingredients — editing a food's macros immediately updates every
   recipe that uses it
@@ -151,20 +162,28 @@ The Vite dev server proxies `/api` to `http://localhost:3000` (override with
 
 ## Data model notes
 
-- `foods` — base ingredients with macros stored per `base_quantity_g` grams
-  (defaults to 100g), scoped to a household.
+- `foods` — base ingredients with macros stored per one serving, scoped to a
+  household. `serving_size_g` is the canonical gram weight that all
+  downstream math (recipes, shopping list, diary) actually uses;
+  `serving_size_qty` + `serving_size_unit` are the display label (e.g. "1
+  cup") that resolves to it. `fiber_g` is optional; when present and the
+  household has Net Carbs tracking on, calories are computed from
+  `carbs_g - fiber_g` instead of `carbs_g`.
+- `households.track_net_carbs` — a single per-household flag (not per-user),
+  so a shared food or recipe shows the same calorie total to every member
+  regardless of who's viewing it.
 - `recipes` + `recipe_components` — a recipe is a list of foods with a
   quantity in grams; macros are always computed on the fly from the current
   component data, so there's nothing to keep in sync manually.
 - `diary_entries` + `diary_entry_components` — a user's plan for a given
-  date/meal slot. A food entry has one adjustable `fraction` (0x-3x of its
-  base quantity); a recipe entry snapshots each of the recipe's components
-  into `diary_entry_components`, each with its own independently adjustable
-  `fraction` — so a planned sandwich can be dialed down to "just half the
-  bottom bun" without changing the underlying recipe. `meal_slot` is a plain
-  text column (breakfast/lunch/dinner/snack/other) rather than an enum, kept
-  editable via `PATCH /api/diary/:id` (also used to reschedule an entry's
-  date) and duplicated across days via `POST /api/diary/copy`.
+  date/meal slot. A food entry has one adjustable `fraction` (0-10 servings
+  of its serving size); a recipe entry snapshots each of the recipe's
+  components into `diary_entry_components`, each with its own independently
+  adjustable `fraction` — so a planned sandwich can be dialed down to "just
+  half the bottom bun" without changing the underlying recipe. `meal_slot` is
+  a plain text column (breakfast/lunch/dinner/snack/other) rather than an
+  enum, kept editable via `PATCH /api/diary/:id` (also used to reschedule an
+  entry's date) and duplicated across days via `POST /api/diary/copy`.
 - `shopping_lists` + `shopping_list_items` — scoped to a household (not a
   single user), so any household member can add to or check off the same
   list. Adding a recipe expands its components into (aggregated) list items.

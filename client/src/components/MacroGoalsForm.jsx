@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 export default function MacroGoalsForm() {
   const { user, setUser } = useAuth();
+  const trackNetCarbs = Boolean(user?.track_net_carbs);
   const [goals, setGoals] = useState({
     daily_carbs_goal_g: user?.daily_carbs_goal_g || '',
     daily_fat_goal_g: user?.daily_fat_goal_g || '',
@@ -38,7 +39,7 @@ export default function MacroGoalsForm() {
       <h2 className="font-medium">Daily macro goals</h2>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-sm font-medium mb-1">Carbs (g)</label>
+          <label className="block text-sm font-medium mb-1">{trackNetCarbs ? 'Net Carbs (g)' : 'Carbs (g)'}</label>
           <input
             type="number"
             min="0"

@@ -43,6 +43,16 @@ export const INGREDIENT_DENSITIES = [
   { name: 'Cocoa powder', gramsPerCup: 84 },
 ];
 
+// Combined list for the Foods "Serving size" unit dropdown. Weight units
+// convert to grams automatically and exactly; volume units and "each" need
+// the gram equivalent entered by hand, since that depends on the specific
+// food's density or size, not just the unit.
+export const SERVING_UNITS = [...WEIGHT_UNITS, ...VOLUME_UNITS, { value: 'each', label: 'each (e.g. 1 egg, 1 slice)' }];
+
+export function isWeightUnit(unit) {
+  return WEIGHT_UNITS.some((u) => u.value === unit);
+}
+
 export function convertWeight(value, fromUnit, toUnit) {
   const from = WEIGHT_UNITS.find((u) => u.value === fromUnit);
   const to = WEIGHT_UNITS.find((u) => u.value === toUnit);
