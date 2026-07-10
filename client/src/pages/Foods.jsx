@@ -15,7 +15,9 @@ function scaleField(value, ratio) {
 const FOODS_TEMPLATE_HEADER = ['name', 'base_quantity_g', 'carbs_g', 'fat_g', 'protein_g'];
 const FOODS_TEMPLATE_ROWS = [
   ['Chicken Breast', '100', '0', '3.6', '31'],
-  ['Rolled Oats', '100', '66', '7', '17'],
+  // base_quantity_g doesn't have to be 100 - here it's a 1-cup (90g) serving,
+  // showing the macros scaled to match (66/7/17 per 100g -> 59.4/6.3/15.3 per 90g).
+  ['Rolled Oats', '90', '59.4', '6.3', '15.3'],
 ];
 
 const SOURCE_LABELS = {
@@ -210,6 +212,10 @@ export default function Foods() {
 
       <div className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
         <h2 className="font-medium">Import from CSV</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          base_quantity_g is whatever serving size you have macros for — not necessarily 100 (see the
+          template's 1-cup oats example).
+        </p>
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
