@@ -6,6 +6,7 @@ import { SERVING_UNITS, convertWeight, isWeightUnit } from '../utils/unitConvers
 
 const emptyForm = {
   name: '',
+  servings: 1,
   serving_size_qty: 100,
   serving_size_unit: 'g',
   manual_grams: '',
@@ -21,6 +22,15 @@ function scaleField(value, ratio) {
   const num = Number(value);
   if (value === '' || !Number.isFinite(num)) return value;
   return Math.round(num * ratio * 10) / 10;
+}
+
+// Divides a macro field by `servings`, e.g. when the user typed in the total
+// carbs/fat/protein for a whole container that covers several servings.
+// Leaves it untouched if it isn't a valid number yet.
+function divideField(value, servings) {
+  const num = Number(value);
+  if (value === '' || !Number.isFinite(num)) return value;
+  return Math.round((num / servings) * 100) / 100;
 }
 
 // The one gram figure everything downstream (recipes, shopping list, diary
@@ -175,15 +185,16 @@ export default function Foods() {
       setError('Enter how many grams one serving is (use the converter if you only know a volume amount).');
       return;
     }
+    const servings = Number(form.servings) || 1;
     const payload = {
       name: form.name,
       serving_size_g: servingGrams,
       serving_size_qty: Number(form.serving_size_qty),
       serving_size_unit: form.serving_size_unit,
-      carbs_g: Number(form.carbs_g),
-      fat_g: Number(form.fat_g),
-      protein_g: Number(form.protein_g),
-      fiber_g: form.fiber_g === '' ? null : Number(form.fiber_g),
+      carbs_g: divideField(form.carbs_g, servings),
+      fat_g: divideField(form.fat_g, servings),
+      protein_g: divideField(form.protein_g, servings),
+      fiber_g: form.fiber_g === '' ? null : divideField(form.fiber_g, servings),
     };
     try {
       if (editingId) {
@@ -208,6 +219,7 @@ export default function Foods() {
     const perUnitGrams = unit !== 'g' && !isWeightUnit(unit) && qty > 0 ? food.serving_size_g / qty : null;
     setForm({
       name: food.name,
+      servings: 1,
       serving_size_qty: qty,
       serving_size_unit: unit,
       manual_grams: perUnitGrams != null ? String(Math.round(perUnitGrams * 100) / 100) : '',
@@ -246,6 +258,7 @@ export default function Foods() {
     setEditingId(null);
     setForm({
       name: result.name,
+      servings: 1,
       serving_size_qty: result.base_quantity_g,
       serving_size_unit: 'g',
       manual_grams: '',
@@ -464,6 +477,24 @@ export default function Foods() {
             min="0.01"
             step="any"
             required
+            value={form.servings}
+            onChange={(e) => setForm({ ...form, servings: e.target.value })}
+            className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1"
+          />
+          {Number(form.servings) !== 1 && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+              Carbs/fat/protein below are totals for all {form.servings} servings - divided down to
+              one serving when saved.
+            </p>
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Serving size</label>
+          <input
+            type="number"
+            min="0.01"
+            step="any"
+            required
             value={form.serving_size_qty}
             onFocus={captureGramsAtFocus}
             onBlur={onQtyOrGramsBlur}
@@ -472,7 +503,7 @@ export default function Foods() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Serving size</label>
+          <label className="block text-sm font-medium mb-1">Unit</label>
           <select
             value={form.serving_size_unit}
             onChange={(e) => onUnitChange(e.target.value)}
@@ -584,8 +615,9 @@ export default function Foods() {
           )}
         </div>
         <p className="col-span-2 sm:col-span-6 text-[11px] text-slate-400 dark:text-slate-500">
-          Changing servings/serving size scales carbs/fat/protein{trackNetCarbs ? '/fiber' : ''} below to
-          match.
+          Changing serving size scales carbs/fat/protein{trackNetCarbs ? '/fiber' : ''} below to match.
+          Set Servings above 1 if the numbers you're entering are a total across multiple servings
+          (e.g. copying a whole container's macros) - they'll be divided down to one serving on save.
         </p>
         {error && <p className="text-red-600 dark:text-red-400 text-sm col-span-6">{error}</p>}
       </form>

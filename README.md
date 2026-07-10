@@ -9,15 +9,18 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   and recipes** so there's something to explore right away (joining an
   existing household via invite code skips this, since it already has real
   data)
-- A shared **foods** database. Macros are entered per a **serving** —
+- A shared **foods** database. Macros are entered per a **Serving Size** —
   pick a standard unit (g, kg, oz, lb, mL, L, tsp, tbsp, cup, fl oz, or
   "each"; defaults to grams) and a quantity. Weight units convert to grams
   automatically; volume and "each" units ask for the grams-per-unit so the
   app can still do the math (e.g. "1 cup = 240g"). Changing the serving
   quantity or its gram weight later automatically scales the
-  carbs/fat/protein fields to match. Planning a food or recipe then works in
-  **servings** (e.g. 0.25 servings of a 144g serving of strawberries), not a
-  raw gram override
+  carbs/fat/protein fields to match. A separate **Servings** field (default
+  1) lets you paste in macros straight off a nutrition label's container
+  total — set it to how many servings those numbers cover and they're
+  divided down to one serving automatically before saving. Planning a food
+  or recipe then works in **servings** (e.g. 0.25 servings of a 144g
+  serving of strawberries), not a raw gram override
 - Optional **Net Carbs** tracking, toggled per household on the Household
   page. When on, foods can record a **Fiber (g)** value alongside carbs;
   fiber is subtracted from carbs (floored at zero) before the calorie
