@@ -225,7 +225,7 @@ function FractionSlider({ label, fraction, quantityG, macros, useNetCarbs, onCha
         onMouseUp={onCommit}
         onTouchEnd={onCommit}
         onKeyUp={onCommit}
-        className="w-full accent-emerald-700"
+        className="w-full accent-emerald-700 touch-pan-y"
       />
       <div className="flex items-center justify-between gap-2 flex-wrap text-sm">
         <span className="font-semibold text-slate-900 dark:text-slate-100">{Math.round(quantityG)}g</span>

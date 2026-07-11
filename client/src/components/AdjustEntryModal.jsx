@@ -112,7 +112,7 @@ export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
               onMouseUp={(e) => commitFraction(Number(e.target.value))}
               onTouchEnd={(e) => commitFraction(Number(e.target.value))}
               onKeyUp={(e) => commitFraction(Number(e.target.value))}
-              className="w-full accent-emerald-700"
+              className="w-full accent-emerald-700 touch-pan-y"
             />
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {Math.round(previewMacros.calories)} kcal · {Math.round(carbsValue)}g {carbsLabel} ·{' '}
