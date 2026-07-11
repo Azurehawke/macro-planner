@@ -16,27 +16,6 @@ function goalCalories(goals) {
   return Number(goals.carbs_g) * 4 + Number(goals.fat_g) * 9 + Number(goals.protein_g) * 4;
 }
 
-function PaletteItem({ kind, id, name }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `palette-${kind}-${id}`,
-    data: { source: 'palette', item_type: kind, id },
-  });
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`flex items-center gap-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-2 py-1.5 text-xs cursor-grab active:cursor-grabbing touch-none ${
-        isDragging ? 'opacity-40' : ''
-      }`}
-    >
-      <span className="text-slate-400 dark:text-slate-500">⠿⠿</span>
-      <span className="truncate flex-1">{name}</span>
-      <span className="uppercase text-[9px] text-slate-400 dark:text-slate-500">{kind}</span>
-    </div>
-  );
-}
-
 function PlacedCard({ entry, onOpen }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `entry-${entry.id}`,
@@ -58,7 +37,7 @@ function PlacedCard({ entry, onOpen }) {
   );
 }
 
-function GridCell({ date, slot, entries, onOpenEntry, onCopyRequest }) {
+function GridCell({ date, slot, entries, onOpenEntry, onAddRequest, onCopyRequest }) {
   const { setNodeRef, isOver } = useDroppable({ id: `cell-${date}-${slot}`, data: { date, slot } });
   return (
     <div
@@ -70,14 +49,128 @@ function GridCell({ date, slot, entries, onOpenEntry, onCopyRequest }) {
       {entries.map((entry) => (
         <PlacedCard key={entry.id} entry={entry} onOpen={onOpenEntry} />
       ))}
-      {entries.length === 0 && (
+      <div className="flex items-center justify-between gap-1 mt-auto">
         <button
-          onClick={() => onCopyRequest(date, slot)}
-          className="text-[10px] text-slate-300 dark:text-slate-600 hover:text-emerald-600 dark:hover:text-emerald-400 text-left"
+          onClick={() => onAddRequest(date, slot)}
+          aria-label={`Add to ${MEAL_SLOT_LABELS[slot]}`}
+          className="h-5 w-5 flex items-center justify-center rounded border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 text-xs leading-none"
         >
-          + copy...
+          +
         </button>
-      )}
+        {entries.length === 0 && (
+          <button
+            onClick={() => onCopyRequest(date, slot)}
+            className="text-[10px] text-slate-300 dark:text-slate-600 hover:text-emerald-600 dark:hover:text-emerald-400"
+          >
+            copy...
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Opened by the "+" button on a grid cell. Lists foods & recipes with
+// checkboxes (rather than the old sidebar's drag source) so adding several
+// items to one meal doesn't take several separate drags.
+function AddItemsModal({ target, foods, recipes, onClose, onSubmit }) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(() => new Set());
+  const [submitting, setSubmitting] = useState(false);
+
+  const filteredFoods = useMemo(
+    () => foods.filter((f) => f.name.toLowerCase().includes(search.toLowerCase())),
+    [foods, search]
+  );
+  const filteredRecipes = useMemo(
+    () => recipes.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
+    [recipes, search]
+  );
+
+  const toggle = (key) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const submit = async () => {
+    if (selected.size === 0) return;
+    setSubmitting(true);
+    try {
+      const items = Array.from(selected).map((key) => {
+        const [kind, idStr] = key.split('-');
+        return { kind, id: Number(idStr) };
+      });
+      await onSubmit(target.date, target.slot, items);
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-slate-800 rounded shadow-lg w-full max-w-sm p-4 space-y-3 flex flex-col max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-medium text-sm">
+          Add to {dayOfWeekLabel(target.date)} {MEAL_SLOT_LABELS[target.slot]}
+        </h3>
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search foods & recipes…"
+          className="w-full border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 text-sm"
+        />
+        <div className="flex-1 overflow-y-auto space-y-1 border-t border-b dark:border-slate-700 py-2">
+          {filteredFoods.map((f) => {
+            const key = `food-${f.id}`;
+            return (
+              <label
+                key={key}
+                className="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm"
+              >
+                <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(key)} />
+                <span className="truncate flex-1">{f.name}</span>
+                <span className="uppercase text-[9px] text-slate-400 dark:text-slate-500">food</span>
+              </label>
+            );
+          })}
+          {filteredRecipes.map((r) => {
+            const key = `recipe-${r.id}`;
+            return (
+              <label
+                key={key}
+                className="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-sm"
+              >
+                <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(key)} />
+                <span className="truncate flex-1">{r.name}</span>
+                <span className="uppercase text-[9px] text-slate-400 dark:text-slate-500">recipe</span>
+              </label>
+            );
+          })}
+          {filteredFoods.length === 0 && filteredRecipes.length === 0 && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 px-1">No matches.</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <button onClick={onClose} className="text-sm text-slate-400 dark:text-slate-500 hover:underline">
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            disabled={selected.size === 0 || submitting}
+            className="bg-emerald-700 text-white rounded px-4 py-1.5 text-sm hover:bg-emerald-800 disabled:opacity-50"
+          >
+            {submitting ? 'Adding…' : `Add${selected.size ? ` (${selected.size})` : ''}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -88,8 +181,8 @@ export default function WeekPlanner() {
   const [weekData, setWeekData] = useState(null);
   const [foods, setFoods] = useState([]);
   const [recipes, setRecipes] = useState([]);
-  const [search, setSearch] = useState('');
   const [openEntry, setOpenEntry] = useState(null);
+  const [addTarget, setAddTarget] = useState(null);
   const [copyTarget, setCopyTarget] = useState(null);
   const [copyOptions, setCopyOptions] = useState(null);
   const [copyingWeek, setCopyingWeek] = useState(false);
@@ -125,23 +218,17 @@ export default function WeekPlanner() {
     return map;
   };
 
-  const filteredFoods = useMemo(
-    () => foods.filter((f) => f.name.toLowerCase().includes(search.toLowerCase())),
-    [foods, search]
-  );
-  const filteredRecipes = useMemo(
-    () => recipes.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())),
-    [recipes, search]
-  );
-
-  const addToCell = async (date, slot, item_type, id) => {
-    await api.post('/diary', {
+  const postDiaryItem = (date, slot, item_type, id) =>
+    api.post('/diary', {
       entry_date: date,
       item_type,
       food_id: item_type === 'food' ? id : undefined,
       recipe_id: item_type === 'recipe' ? id : undefined,
       meal_slot: slot,
     });
+
+  const addItemsToCell = async (date, slot, items) => {
+    await Promise.all(items.map(({ kind, id }) => postDiaryItem(date, slot, kind, id)));
     await load(weekStart);
   };
 
@@ -155,9 +242,7 @@ export default function WeekPlanner() {
     if (!over) return;
     const { date, slot } = over.data.current;
     const from = active.data.current;
-    if (from.source === 'palette') {
-      addToCell(date, slot, from.item_type, from.id);
-    } else if (from.source === 'placed') {
+    if (from.source === 'placed') {
       const entry = days.flatMap((d) => d.entries).find((e) => e.id === from.entryId);
       if (entry && (entry.entry_date !== date || entry.meal_slot !== slot)) {
         moveEntry(from.entryId, date, slot);
@@ -273,102 +358,89 @@ export default function WeekPlanner() {
         })}
       </div>
 
-      {/* Desktop: drag-and-drop grid */}
+      {/* Desktop: grid with drag-and-drop to reschedule already-placed items */}
       <div className="hidden sm:block bg-white dark:bg-slate-800 border dark:border-slate-700 rounded shadow overflow-hidden">
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="flex">
-            <div className="w-48 shrink-0 border-r dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3 space-y-2">
-              <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Add to plan</h3>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search foods & recipes…"
-                className="w-full border dark:border-slate-600 dark:bg-slate-800 rounded px-2 py-1 text-xs"
-              />
-              <div className="space-y-1 max-h-[26rem] overflow-y-auto">
-                {filteredFoods.map((f) => (
-                  <PaletteItem key={`food-${f.id}`} kind="food" id={f.id} name={f.name} />
-                ))}
-                {filteredRecipes.map((r) => (
-                  <PaletteItem key={`recipe-${r.id}`} kind="recipe" id={r.id} name={r.name} />
-                ))}
-                {filteredFoods.length === 0 && filteredRecipes.length === 0 && (
-                  <p className="text-xs text-slate-400 dark:text-slate-500">No matches.</p>
-                )}
-              </div>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">Drag onto a cell to plan it.</p>
-            </div>
-
-            <div className="flex-1 overflow-x-auto">
-              <div
-                className="grid"
-                style={{ gridTemplateColumns: '5.5rem repeat(7, minmax(7.5rem, 1fr))', minWidth: '56rem' }}
-              >
-                <div className="border-r border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900" />
-                {days.map((day) => {
-                  const isToday = day.date === todayISO();
-                  return (
-                    <button
-                      key={day.date}
-                      onClick={() => navigate(`/plan/${day.date}`)}
-                      className="border-r border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 text-center hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400">
-                        {dayOfWeekLabel(day.date)}
-                      </div>
-                      <div
-                        className={`text-sm font-semibold ${isToday ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
-                      >
-                        {dayNum(day.date)}
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {MEAL_SLOTS.map((slot) => (
-                  <React.Fragment key={slot}>
-                    <div className="border-r border-b dark:border-slate-700 px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center">
-                      {MEAL_SLOT_LABELS[slot]}
+          <div className="overflow-x-auto">
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: '5.5rem repeat(7, minmax(7.5rem, 1fr))', minWidth: '56rem' }}
+            >
+              <div className="border-r border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900" />
+              {days.map((day) => {
+                const isToday = day.date === todayISO();
+                return (
+                  <button
+                    key={day.date}
+                    onClick={() => navigate(`/plan/${day.date}`)}
+                    className="border-r border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 text-center hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400">
+                      {dayOfWeekLabel(day.date)}
                     </div>
-                    {days.map((day) => (
-                      <GridCell
-                        key={`${day.date}-${slot}`}
-                        date={day.date}
-                        slot={slot}
-                        entries={entriesBySlot(day)[slot]}
-                        onOpenEntry={setOpenEntry}
-                        onCopyRequest={openCopyOptions}
-                      />
-                    ))}
-                  </React.Fragment>
-                ))}
-
-                <div className="border-r dark:border-slate-700 px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center">
-                  Total
-                </div>
-                {days.map((day) => {
-                  const over = goalKcal != null && day.totals.calories > goalKcal;
-                  return (
                     <div
-                      key={`total-${day.date}`}
-                      className="border-r dark:border-slate-700 px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 flex items-center justify-between"
+                      className={`text-sm font-semibold ${isToday ? 'text-emerald-700 dark:text-emerald-400' : ''}`}
                     >
-                      <span className={`font-semibold ${over ? 'text-rose-600 dark:text-rose-400' : ''}`}>
-                        {Math.round(day.totals.calories)}
-                      </span>
-                      {goalKcal != null && (
-                        <span className="text-slate-400 dark:text-slate-500">/ {Math.round(goalKcal)}</span>
-                      )}
+                      {dayNum(day.date)}
                     </div>
-                  );
-                })}
+                  </button>
+                );
+              })}
+
+              {MEAL_SLOTS.map((slot) => (
+                <React.Fragment key={slot}>
+                  <div className="border-r border-b dark:border-slate-700 px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center">
+                    {MEAL_SLOT_LABELS[slot]}
+                  </div>
+                  {days.map((day) => (
+                    <GridCell
+                      key={`${day.date}-${slot}`}
+                      date={day.date}
+                      slot={slot}
+                      entries={entriesBySlot(day)[slot]}
+                      onOpenEntry={setOpenEntry}
+                      onAddRequest={(date, slot) => setAddTarget({ date, slot })}
+                      onCopyRequest={openCopyOptions}
+                    />
+                  ))}
+                </React.Fragment>
+              ))}
+
+              <div className="border-r dark:border-slate-700 px-2 py-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center">
+                Total
               </div>
+              {days.map((day) => {
+                const over = goalKcal != null && day.totals.calories > goalKcal;
+                return (
+                  <div
+                    key={`total-${day.date}`}
+                    className="border-r dark:border-slate-700 px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 flex items-center justify-between"
+                  >
+                    <span className={`font-semibold ${over ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                      {Math.round(day.totals.calories)}
+                    </span>
+                    {goalKcal != null && (
+                      <span className="text-slate-400 dark:text-slate-500">/ {Math.round(goalKcal)}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </DndContext>
       </div>
 
       {openEntry && <AdjustEntryModal entry={openEntry} days={days} onRefresh={() => load(weekStart)} onClose={closeAndReload} />}
+
+      {addTarget && (
+        <AddItemsModal
+          target={addTarget}
+          foods={foods}
+          recipes={recipes}
+          onClose={() => setAddTarget(null)}
+          onSubmit={addItemsToCell}
+        />
+      )}
 
       {copyTarget && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={() => setCopyTarget(null)}>
