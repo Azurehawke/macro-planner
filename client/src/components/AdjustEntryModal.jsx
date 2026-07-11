@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { dayOfWeekLabel, formatShortDate } from '../utils/date.js';
+import ServingsInput from './ServingsInput.jsx';
 
 const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 const MEAL_SLOT_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack', other: 'Other' };
@@ -98,22 +99,8 @@ export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
 
         {entry.item_type === 'food' ? (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Servings</span>
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400">{fraction.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max={MAX_SERVINGS}
-              step="0.05"
-              value={fraction}
-              onChange={(e) => setFraction(Number(e.target.value))}
-              onMouseUp={(e) => commitFraction(Number(e.target.value))}
-              onTouchEnd={(e) => commitFraction(Number(e.target.value))}
-              onKeyUp={(e) => commitFraction(Number(e.target.value))}
-              className="w-full accent-emerald-700 touch-pan-y"
-            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center">Servings</p>
+            <ServingsInput value={fraction} max={MAX_SERVINGS} onChange={setFraction} onCommit={commitFraction} />
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {Math.round(previewMacros.calories)} kcal · {Math.round(carbsValue)}g {carbsLabel} ·{' '}
               {Math.round(previewMacros.fat_g)}g fat · {Math.round(previewMacros.protein_g)}g protein

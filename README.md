@@ -57,8 +57,9 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   same meal slot, and a "Copy last week" button repeats the whole week at
   once. Clicking a day's header, or any card on mobile (where the grid gives
   way to a simple day list), opens that day's full view: colored macro-goal
-  cards, sliders to dial each planned food or recipe up or down (e.g. plan in
-  just half a bun from a sandwich recipe), and the markdown export
+  cards, a +/- stepper (type an exact number or tap to nudge by 0.25) to dial
+  each planned food or recipe up or down (e.g. plan in just half a bun from a
+  sandwich recipe), and the markdown export
 - Clicking a planned card in the grid opens a popup to change its day, meal
   slot, or amount without leaving the week view
 - A **shopping list** shared by the whole household — add ingredients straight

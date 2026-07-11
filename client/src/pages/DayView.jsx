@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { loadHeadingLevels } from '../utils/markdownHeadingLevels.js';
 import { addDays, dayOfWeekLabel, formatShortDate, todayISO } from '../utils/date.js';
+import ServingsInput from '../components/ServingsInput.jsx';
 
 const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 // A serving isn't capped at "3x" the way a vague fraction was - a food whose
@@ -201,12 +202,12 @@ function MacroMiniStat({ label, colorKey, planned, goal }) {
   );
 }
 
-// A labelled 0-10 servings slider used both for a whole food entry and for a
+// A labelled 0-10 servings stepper used both for a whole food entry and for a
 // single ingredient inside a planned recipe. `fraction` is the committed
 // (server) value - it's how many servings of the food's defined serving
-// size are planned; local drag state is tracked by the parent so macros
-// preview live.
-function FractionSlider({ label, fraction, quantityG, macros, useNetCarbs, onChange, onCommit }) {
+// size are planned; local edit state is tracked by the parent so macros
+// preview live as the number is typed/stepped.
+function ServingsCard({ label, fraction, quantityG, macros, useNetCarbs, onChange, onCommit }) {
   return (
     <div className="rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -215,18 +216,7 @@ function FractionSlider({ label, fraction, quantityG, macros, useNetCarbs, onCha
           {fraction.toFixed(2)} serving{fraction === 1 ? '' : 's'}
         </span>
       </div>
-      <input
-        type="range"
-        min="0"
-        max={MAX_SERVINGS}
-        step="0.05"
-        value={fraction}
-        onChange={(e) => onChange(Number(e.target.value))}
-        onMouseUp={onCommit}
-        onTouchEnd={onCommit}
-        onKeyUp={onCommit}
-        className="w-full accent-emerald-700 touch-pan-y"
-      />
+      <ServingsInput value={fraction} max={MAX_SERVINGS} onChange={onChange} onCommit={onCommit} />
       <div className="flex items-center justify-between gap-2 flex-wrap text-sm">
         <span className="font-semibold text-slate-900 dark:text-slate-100">{Math.round(quantityG)}g</span>
         <span className="text-slate-600 dark:text-slate-400">
@@ -258,10 +248,9 @@ export default function DayView() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Local, optimistic fraction overrides so dragging a slider feels instant.
+  // Local, optimistic fraction overrides so editing servings feels instant.
   // Keyed by entry id for food entries, `${entryId}:${foodId}` for components.
   const [localFractions, setLocalFractions] = useState({});
-  const pendingCommits = useRef({});
 
   const load = async () => {
     const [diary, { foods }, { recipes }] = await Promise.all([
@@ -308,34 +297,26 @@ export default function DayView() {
     setLocalFractions((prev) => ({ ...prev, [key]: value }));
   };
 
-  const commitFoodFraction = (entryId) => {
-    const key = String(entryId);
-    const value = pendingCommits.current[key];
-    if (value == null) return;
+  const commitFoodFraction = (entryId, value) => {
     api.put(`/diary/${entryId}`, { fraction: value }).then(load);
   };
 
-  const commitComponentFraction = (entryId, foodId) => {
-    const key = `${entryId}:${foodId}`;
-    const value = pendingCommits.current[key];
-    if (value == null) return;
+  const commitComponentFraction = (entryId, foodId, value) => {
     api.put(`/diary/${entryId}/components/${foodId}`, { fraction: value }).then(load);
   };
 
   const options = itemType === 'food' ? foods : recipes;
 
-  // Recompute an entry's displayed macros from any locally-dragged (uncommitted) fractions.
+  // Recompute an entry's displayed macros from any locally-edited (uncommitted) fractions.
   const previewEntry = (entry) => {
     if (entry.item_type === 'food') {
       const key = String(entry.id);
       const fraction = localFractions[key] ?? entry.fraction;
-      pendingCommits.current[key] = fraction;
       return { fraction, quantity_g: entry.serving_size_g * fraction, macros: scaleMacros(entry.unit_macros, fraction) };
     }
     const components = entry.components.map((c) => {
       const key = `${entry.id}:${c.food_id}`;
       const fraction = localFractions[key] ?? c.fraction;
-      pendingCommits.current[key] = fraction;
       return { ...c, fraction, quantity_g: c.base_quantity_g * fraction, macros: scaleMacros(c.unit_macros, fraction) };
     });
     return { components, macros: sumMacros(components.map((c) => c.macros)) };
@@ -521,7 +502,7 @@ export default function DayView() {
             Add to plan
           </button>
           <p className="text-xs text-slate-500 dark:text-slate-400 w-full">
-            Adds a full serving — dial it in with the slider below once it's added.
+            Adds a full serving — adjust the amount below once it's added.
           </p>
           {error && <p className="text-red-600 dark:text-red-400 text-sm w-full">{error}</p>}
         </form>
@@ -543,20 +524,20 @@ export default function DayView() {
             </div>
 
             {entry.item_type === 'food' ? (
-              <FractionSlider
+              <ServingsCard
                 label="Amount"
                 fraction={preview.fraction}
                 quantityG={preview.quantity_g}
                 macros={preview.macros}
                 useNetCarbs={trackNetCarbs}
                 onChange={(v) => setLocalFraction(String(entry.id), v)}
-                onCommit={() => commitFoodFraction(entry.id)}
+                onCommit={(v) => commitFoodFraction(entry.id, v)}
               />
             ) : (
               <>
                 <div className="space-y-3">
                   {preview.components.map((c) => (
-                    <FractionSlider
+                    <ServingsCard
                       key={c.food_id}
                       label={c.food_name}
                       fraction={c.fraction}
@@ -564,7 +545,7 @@ export default function DayView() {
                       macros={c.macros}
                       useNetCarbs={trackNetCarbs}
                       onChange={(v) => setLocalFraction(`${entry.id}:${c.food_id}`, v)}
-                      onCommit={() => commitComponentFraction(entry.id, c.food_id)}
+                      onCommit={(v) => commitComponentFraction(entry.id, c.food_id, v)}
                     />
                   ))}
                 </div>
