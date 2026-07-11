@@ -28,9 +28,10 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   goals — labels and computes "Net Carbs" instead of "Carbs" for any food
   that has fiber recorded. Foods without a fiber value are unaffected
   either way
-- **Recipes** built from foods (or other components), with total macros computed
-  live from the ingredients — editing a food's macros immediately updates every
-  recipe that uses it
+- **Recipes** built from foods, each added by **servings** of that food (not a
+  raw gram amount) — e.g. "2 servings" of an ingredient whose serving size is
+  90g uses 180g. Total macros are computed live from the ingredients —
+  editing a food's macros immediately updates every recipe that uses it
 - Each food shows every recipe currently using it ("used in"), updated live —
   no manual re-linking needed
 - Per-user **daily macro goals**, set on the Settings page — either by hand,

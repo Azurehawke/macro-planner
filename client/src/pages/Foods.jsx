@@ -72,8 +72,8 @@ function pluralUnit(unit, qty) {
 
 const FOODS_TEMPLATE_HEADER = [
   'name',
-  'serving_size_g',
-  'serving_size_qty',
+  'serving size',
+  'servings',
   'serving_size_unit',
   'carbs_g',
   'fat_g',
@@ -82,8 +82,8 @@ const FOODS_TEMPLATE_HEADER = [
 ];
 const FOODS_TEMPLATE_ROWS = [
   ['Chicken Breast', '100', '100', 'g', '0', '3.6', '31', ''],
-  // serving_size_g is the one required gram figure - here it's a 1-cup (90g)
-  // serving; serving_size_qty/unit are just the label ("1 cup") shown for it.
+  // "serving size" is the one required gram figure - here it's a 1-cup (90g)
+  // serving; "servings"/serving_size_unit are just the label ("1 cup") shown for it.
   // fiber_g is optional - leave blank if you don't track it.
   ['Rolled Oats', '90', '1', 'cup', '59.4', '6.3', '15.3', '9.5'],
 ];
@@ -291,8 +291,11 @@ export default function Foods() {
       }
       const foods = rows.map((r) => ({
         name: r.name,
-        serving_size_g: r.serving_size_g,
-        serving_size_qty: r.serving_size_qty,
+        // Accept both the current template headers ("serving size" /
+        // "servings") and the older technical names, so CSVs downloaded
+        // before this renaming still import fine.
+        serving_size_g: r['serving size'] ?? r.serving_size_g,
+        serving_size_qty: r['servings'] ?? r.serving_size_qty,
         serving_size_unit: r.serving_size_unit,
         carbs_g: r.carbs_g,
         fat_g: r.fat_g,
@@ -328,9 +331,9 @@ export default function Foods() {
       <div className="bg-white dark:bg-slate-800 shadow rounded p-4 space-y-2">
         <h2 className="font-medium">Import from CSV</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          serving_size_g is the one required gram figure — not necessarily 100 (see the template's 1-cup
-          oats example). serving_size_qty/serving_size_unit are just the label shown for it (default to
-          matching serving_size_g in grams). fiber_g is optional.
+          "serving size" is the one required gram figure — not necessarily 100 (see the template's 1-cup
+          oats example). "servings"/serving_size_unit are just the label shown for it (e.g. "1" + "cup",
+          or "100" + "g"). fiber_g is optional.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <button

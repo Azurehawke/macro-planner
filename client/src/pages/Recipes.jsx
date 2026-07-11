@@ -4,7 +4,15 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { csvToObjects, downloadCsv } from '../utils/csv.js';
 
 function emptyComponent() {
-  return { food_id: '', quantity_g: '' };
+  return { food_id: '', servings: '' };
+}
+
+// Looks up a food's canonical per-serving gram figure so the recipe form can
+// work in servings (matching how foods/diary already speak in servings)
+// while the backend keeps storing/scaling components in grams.
+function servingSizeFor(foods, foodId) {
+  const food = foods.find((f) => f.id === Number(foodId));
+  return food ? Number(food.serving_size_g) : null;
 }
 
 const RECIPES_TEMPLATE_HEADER = ['recipe_name', 'food_name', 'quantity_g'];
@@ -73,8 +81,11 @@ export default function Recipes() {
     const payload = {
       name,
       components: components
-        .filter((c) => c.food_id && c.quantity_g)
-        .map((c) => ({ food_id: Number(c.food_id), quantity_g: Number(c.quantity_g) })),
+        .filter((c) => c.food_id && c.servings)
+        .map((c) => ({
+          food_id: Number(c.food_id),
+          quantity_g: Number(c.servings) * servingSizeFor(foods, c.food_id),
+        })),
     };
     try {
       if (editingId) {
@@ -93,7 +104,11 @@ export default function Recipes() {
     setEditingId(recipe.id);
     setName(recipe.name);
     setComponents(
-      recipe.components.map((c) => ({ food_id: String(c.food_id), quantity_g: String(c.quantity_g) }))
+      recipe.components.map((c) => {
+        const size = servingSizeFor(foods, c.food_id);
+        const servings = size ? Math.round((c.quantity_g / size) * 1000) / 1000 : '';
+        return { food_id: String(c.food_id), servings: String(servings) };
+      })
     );
     setExpandedId(null);
   };
@@ -202,8 +217,8 @@ export default function Recipes() {
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium">Components</label>
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              Quantities are in grams — converting from cups/tbsp/oz? Use the converter (ruler icon in the
-              nav).
+              Enter how many servings of each food this recipe uses (based on that food's own serving
+              size) — not a raw gram amount.
             </span>
           </div>
           {components.map((c, idx) => (
@@ -223,12 +238,12 @@ export default function Recipes() {
               </select>
               <input
                 type="number"
-                min="0"
-                step="0.1"
+                min="0.01"
+                step="any"
                 required
-                placeholder="grams"
-                value={c.quantity_g}
-                onChange={(e) => updateComponent(idx, 'quantity_g', e.target.value)}
+                placeholder="servings"
+                value={c.servings}
+                onChange={(e) => updateComponent(idx, 'servings', e.target.value)}
                 className="border dark:border-slate-600 dark:bg-slate-900 rounded px-2 py-1 w-28"
               />
               {components.length > 1 && (
@@ -292,11 +307,19 @@ export default function Recipes() {
             </div>
             {expandedId === recipe.id && (
               <ul className="mt-2 text-sm text-slate-600 dark:text-slate-300 list-disc list-inside">
-                {recipe.components.map((c) => (
-                  <li key={c.food_id}>
-                    {c.food_name} — {c.quantity_g}g ({Math.round(c.calories)} kcal)
-                  </li>
-                ))}
+                {recipe.components.map((c) => {
+                  const size = servingSizeFor(foods, c.food_id);
+                  const servings = size ? Math.round((c.quantity_g / size) * 100) / 100 : null;
+                  return (
+                    <li key={c.food_id}>
+                      {c.food_name} —{' '}
+                      {servings != null
+                        ? `${servings} serving${servings === 1 ? '' : 's'} (${c.quantity_g}g)`
+                        : `${c.quantity_g}g`}{' '}
+                      ({Math.round(c.calories)} kcal)
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
