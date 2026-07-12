@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { api } from '../api/client.js';
 import AdjustEntryModal from '../components/AdjustEntryModal.jsx';
@@ -175,9 +175,20 @@ function AddItemsModal({ target, foods, recipes, onClose, onSubmit }) {
   );
 }
 
+// Landing here from a day view (e.g. clicking "‹ Week") carries the window
+// that day was viewed from forward via ?week=, so returning from planning a
+// future/past day lands back on that week instead of always snapping to the
+// current one. A day-stepped window isn't necessarily Sunday-aligned, so the
+// param is used as-is rather than re-snapped through startOfWeek.
+function initialWeekStart(searchParams) {
+  const w = searchParams.get('week');
+  return w && /^\d{4}-\d{2}-\d{2}$/.test(w) ? w : startOfWeek(todayISO());
+}
+
 export default function WeekPlanner() {
   const navigate = useNavigate();
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(todayISO()));
+  const [searchParams] = useSearchParams();
+  const [weekStart, setWeekStart] = useState(() => initialWeekStart(searchParams));
   const [weekData, setWeekData] = useState(null);
   const [foods, setFoods] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -304,6 +315,15 @@ export default function WeekPlanner() {
             onClick={() => setWeekStart(addDays(weekStart, -7))}
             className="border dark:border-slate-600 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
             aria-label="Previous week"
+            title="Back one week"
+          >
+            «
+          </button>
+          <button
+            onClick={() => setWeekStart(addDays(weekStart, -1))}
+            className="border dark:border-slate-600 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
+            aria-label="Previous day"
+            title="Back one day"
           >
             ‹
           </button>
@@ -311,11 +331,20 @@ export default function WeekPlanner() {
             {formatShortDate(weekStart)} – {formatShortDate(addDays(weekStart, 6))}
           </span>
           <button
+            onClick={() => setWeekStart(addDays(weekStart, 1))}
+            className="border dark:border-slate-600 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
+            aria-label="Next day"
+            title="Forward one day"
+          >
+            ›
+          </button>
+          <button
             onClick={() => setWeekStart(addDays(weekStart, 7))}
             className="border dark:border-slate-600 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800"
             aria-label="Next week"
+            title="Forward one week"
           >
-            ›
+            »
           </button>
           <button
             onClick={() => setWeekStart(startOfWeek(todayISO()))}
@@ -340,7 +369,7 @@ export default function WeekPlanner() {
           return (
             <Link
               key={day.date}
-              to={`/plan/${day.date}`}
+              to={`/plan/${day.date}?week=${weekStart}`}
               className={`flex items-center justify-between bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-3 py-2 ${
                 isToday ? 'ring-1 ring-emerald-600' : ''
               }`}
@@ -372,7 +401,7 @@ export default function WeekPlanner() {
                 return (
                   <button
                     key={day.date}
-                    onClick={() => navigate(`/plan/${day.date}`)}
+                    onClick={() => navigate(`/plan/${day.date}?week=${weekStart}`)}
                     className="border-r border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900 py-1.5 text-center hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400">
@@ -430,7 +459,15 @@ export default function WeekPlanner() {
         </DndContext>
       </div>
 
-      {openEntry && <AdjustEntryModal entry={openEntry} days={days} onRefresh={() => load(weekStart)} onClose={closeAndReload} />}
+      {openEntry && (
+        <AdjustEntryModal
+          entry={openEntry}
+          days={days}
+          weekStart={weekStart}
+          onRefresh={() => load(weekStart)}
+          onClose={closeAndReload}
+        />
+      )}
 
       {addTarget && (
         <AddItemsModal

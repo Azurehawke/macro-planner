@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { loadHeadingLevels } from '../utils/markdownHeadingLevels.js';
-import { addDays, dayOfWeekLabel, formatShortDate, todayISO } from '../utils/date.js';
+import { addDays, dayOfWeekLabel, formatShortDate, startOfWeek, todayISO } from '../utils/date.js';
 import ServingsInput from '../components/ServingsInput.jsx';
 
 const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
@@ -238,7 +238,12 @@ export default function DayView() {
   const trackNetCarbs = Boolean(user?.track_net_carbs);
   const { date: routeDate } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const date = routeDate || todayISO();
+  // Carries forward whichever week window (possibly day-stepped, so not
+  // necessarily Sunday-aligned) the week grid was showing when this day was
+  // opened, so "‹ Week" returns there instead of always the current week.
+  const backToWeek = searchParams.get('week') || startOfWeek(date);
   const [data, setData] = useState(null);
   const [foods, setFoods] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -360,7 +365,7 @@ export default function DayView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const goToDate = (newDate) => navigate(`/plan/${newDate}`);
+  const goToDate = (newDate) => navigate(`/plan/${newDate}?week=${backToWeek}`);
 
   return (
     <div>
@@ -371,7 +376,7 @@ export default function DayView() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Link
-              to="/plan"
+              to={`/plan?week=${backToWeek}`}
               className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline"
               title="Back to the week grid"
             >

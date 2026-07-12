@@ -24,7 +24,7 @@ function scaleMacros(unitMacros, fraction) {
 // Opened by clicking a placed card in the week grid. Day/meal changes save
 // immediately (same effect as dragging the card to another cell) and just
 // refresh the grid behind the modal; only Remove/Done actually close it.
-export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
+export default function AdjustEntryModal({ entry, days, weekStart, onRefresh, onClose }) {
   const { user } = useAuth();
   const trackNetCarbs = Boolean(user?.track_net_carbs);
   const [day, setDay] = useState(entry.entry_date);
@@ -113,7 +113,7 @@ export default function AdjustEntryModal({ entry, days, onRefresh, onClose }) {
               {Math.round(previewMacros.fat_g)}g fat · {Math.round(previewMacros.protein_g)}g protein
             </p>
             <Link
-              to={`/plan/${day}`}
+              to={`/plan/${day}?week=${weekStart}`}
               onClick={onClose}
               className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline"
             >

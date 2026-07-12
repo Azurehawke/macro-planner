@@ -50,17 +50,21 @@ A self-hosted web app for planning daily macros (carbs/fat/protein) across a hou
   who wants a higher protein floor than the standard percentage split gives.
   "Use these targets" writes straight into your goals, so it's easy to
   recompute every 15-20 lbs or whenever your goal changes
-- A **weekly plan** grid (Sun-Sat across the top, Breakfast/Lunch/Dinner/Snack
+- A **weekly plan** grid (7 days across the top, Breakfast/Lunch/Dinner/Snack
   down the side) — each cell's "+" opens a searchable, checkbox list of foods
   and recipes so you can plan several items into a meal at once; already-
   planned cards can still be dragged to a different day/meal to reschedule
-  them. Each empty cell also offers a one-click "copy" from yesterday's or
-  last week's same meal slot, and a "Copy last week" button repeats the whole
-  week at once. Clicking a day's header, or any card on mobile (where the
-  grid gives way to a simple day list), opens that day's full view: colored
-  macro-goal cards, a +/- stepper (type an exact number or tap to nudge by
-  0.25) to dial each planned food or recipe up or down (e.g. plan in just
-  half a bun from a sandwich recipe), and the markdown export
+  them. Step the window a full week at a time («/») or one day at a time
+  (‹/›) — handy for lining a Sun-Sat grid up with a Mon-Sun diet plan, for
+  instance. Each empty cell also offers a one-click "copy" from yesterday's
+  or last week's same meal slot, and a "Copy last week" button repeats the
+  whole week at once. Clicking a day's header, or any card on mobile (where
+  the grid gives way to a simple day list), opens that day's full view:
+  colored macro-goal cards, a +/- stepper (type an exact number or tap to
+  nudge by 0.25) to dial each planned food or recipe up or down (e.g. plan
+  in just half a bun from a sandwich recipe), and the markdown export.
+  Leaving that day view returns to whichever week window you came from
+  (even a day-stepped one), not always the current week
 - Clicking a planned card in the grid opens a popup to change its day, meal
   slot, or amount without leaving the week view
 - A **shopping list** shared by the whole household — add ingredients straight
